@@ -24,6 +24,13 @@ function RepoTrafficViewer() {
                 const { data: clones } = await octokit.request(
                     `GET /repos/${repo.owner.login}/${repo.name}/traffic/clones`
                 );
+                const { data: todayViews } = await octokit.request(
+                    `GET /repos/${repo.owner.login}/${repo.name}/traffic/views?per=day`
+                );
+                const { data: todayClones } = await octokit.request(
+                    `GET /repos/${repo.owner.login}/${repo.name}/traffic/clones?per=day`
+                );
+
                 return {
                     name: repo.name,
                     url: repo.html_url,
@@ -31,6 +38,10 @@ function RepoTrafficViewer() {
                     uniqueViews: views.uniques,
                     clones: clones.count,
                     uniqueClones: clones.uniques,
+                    yesterdayViews: views.count - todayViews.count,
+                    yesterdayUniqueViews: views.uniques - todayViews.uniques,
+                    yesterdayClones: clones.count - todayClones.count,
+                    yesterdayUniqueClones: clones.uniques - todayClones.uniques,
                 };
             })
         );
@@ -59,7 +70,7 @@ function RepoTrafficViewer() {
                         </tr>
                     </thead>
                     <tbody>
-                        {repos.map(({ name, url, views, uniqueViews, clones, uniqueClones }) => {
+                        {repos.map(({ name, url, views, uniqueViews, clones, uniqueClones, yesterdayViews, yesterdayUniqueViews, yesterdayClones, yesterdayUniqueClones, }) => {
                             return (
                                 <tr key={name}>
                                     <td>{name}</td>
@@ -68,10 +79,10 @@ function RepoTrafficViewer() {
                                             {url}
                                         </a>
                                     </td>
-                                    <td>{views}</td>
-                                    <td>{uniqueViews}</td>
-                                    <td>{clones}</td>
-                                    <td>{uniqueClones}</td>
+                                    <td><per>{views} {yesterdayViews}</per></td>
+                                    <td><per>{uniqueViews} {yesterdayUniqueViews}</per></td>
+                                    <td><per>{clones} {yesterdayClones}</per></td>
+                                    <td><per>{uniqueClones} {yesterdayUniqueClones}</per></td>
                                 </tr>
                             );
                         })}
