@@ -1,0 +1,44 @@
+.table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.table th,
+.table td {
+    padding: 8px;
+    text-align: center;
+    border-bottom: 1px solid #ddd;
+}
+
+
+.table th {
+    background-color: #0366d6;
+    color: #fff;
+}
+
+.table tr:hover {
+    background-color: #f5f5f5;
+}
+
+.table a {
+    color: #0366d6;
+}
+
+#repo-traffic {
+    background-color: #f2f2f2;
+    padding: 20px;
+    border-radius: 10px;
+}
+
+h2 {
+    color: #0366d6;
+    margin-bottom: 20px;
+}
+
+.dataItem .today {
+    color:green;
+    margin-right: 10px;
+}
+.dataItem .yesterday {
+    color:red;
+}
