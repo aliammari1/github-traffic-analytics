@@ -94,20 +94,20 @@ function RepoTrafficViewer() {
                       </a>
                     </td>
                     <td className="dataItem">
-                      <a className="today">{views}</a>
-                      <a className="yesterday">{yesterdayViews}</a>
+                      <strong className="today">{views}</strong>
+                      <strong className="yesterday">{yesterdayViews}</strong>
                     </td>
                     <td className="dataItem">
-                      <a className="today">{uniqueViews}</a>
-                      <a className="yesterday">{yesterdayUniqueViews}</a>
+                      <strong className="today">{uniqueViews}</strong>
+                      <strong className="yesterday">{yesterdayUniqueViews}</strong>
                     </td>
                     <td className="dataItem">
-                      <a className="today">{clones}</a>
-                      <a className="yesterday">{yesterdayClones}</a>
+                      <strong className="today">{clones}</strong>
+                      <strong className="yesterday">{yesterdayClones}</strong>
                     </td>
                     <td className="dataItem">
-                      <a className="today">{uniqueClones}</a>
-                      <a className="yesterday">{yesterdayUniqueClones}</a>
+                      <strong className="today">{uniqueClones}</strong>
+                      <strong className="yesterday">{yesterdayUniqueClones}</strong>
                     </td>
                   </tr>
                 );
