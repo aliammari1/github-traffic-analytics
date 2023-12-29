@@ -15,11 +15,8 @@ To install and run this project locally, follow these steps:
 1. Clone this repository to your local machine.
 2. Navigate to the project directory in your terminal.
 3. Run `npm install` to install the project dependencies.
-4. Create a `.env` file in the root directory of the project and add your GitHub personal access token as follows:
-5. In the `.env` file, add the following line: `REACT_APP_GITHUB_PERSONAL_ACCESS_TOKEN=YOUR_TOKEN_HERE`, replacing `YOUR_TOKEN_HERE` with your actual GitHub personal access token.
-6. Save the `.env` file.
-7. Run `npm start` to start the development server.
-8. Open your browser and navigate to `http://localhost:3000` to view the app.
+4. Run `npm start` to start the development server.
+5. Open your browser and navigate to `http://localhost:3000` to view the app.
 
 ## Usage
 
