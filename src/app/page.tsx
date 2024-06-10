@@ -1,11 +1,24 @@
+"use client"
 import React, { useState, useEffect } from "react";
 import { Octokit } from "@octokit/rest";
-import "./index.css";
 
 const octokit = new Octokit();
 
 function RepoTrafficViewer() {
-  const [repos, setRepos] = useState([]);
+  type RepoData = {
+    name: string;
+    url: string;
+    views: number;
+    uniqueViews: number;
+    clones: number;
+    uniqueClones: number;
+    yesterdayViews: number;
+    yesterdayUniqueViews: number;
+    yesterdayClones: number;
+    yesterdayUniqueClones: number;
+  };
+
+  const [repos, setRepos] = useState<RepoData[]>([]);
   const [token, setToken] = useState("");
   const [acceptedToken, setAcceptedToken] = useState("");
 
@@ -41,10 +54,10 @@ function RepoTrafficViewer() {
         );
         const today = new Date().toISOString().slice(0, 10);
         const todayViews = views.views.find(
-          (view) => view.timestamp.slice(0, 10) === today
+          (view: any) => view.timestamp.slice(0, 10) === today
         ) || { count: 0, uniques: 0 };
         const todayClones = clones.clones.find(
-          (clone) => clone.timestamp.slice(0, 10) === today
+          (clone: any) => clone.timestamp.slice(0, 10) === today
         ) || { count: 0, uniques: 0 };
 
         return {
