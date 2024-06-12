@@ -13,10 +13,11 @@ Welcome to GitHub Traffic Analytics! This project is designed to provide analyti
 To install and run this project locally, follow these steps:
 
 1. Clone this repository to your local machine.
-2. Navigate to the project directory in your terminal.
-3. Run `npm install` to install the project dependencies.
-4. Run `npm start` to start the development server.
-5. Open your browser and navigate to `http://localhost:3000` to view the app.
+2. copy the .env.local.example and put your github api token there
+3. Navigate to the project directory in your terminal.
+4. Run `npm install` to install the project dependencies.
+5. Run `npm start` to start the development server.
+6. Open your browser and navigate to `http://localhost:3000` to view the app.
 
 ## Usage
 
