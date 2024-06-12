@@ -88,10 +88,22 @@ function RepoTrafficViewer() {
   fetchRepos();
 
   const data = repos;
-  const columns: ColumnDef<RepoData>[] = useMemo(
-    () => [
-      {
-        accessorKey: "name",
+  const columns: ColumnDef<RepoData>[] = useMemo(() => {
+    const columnKeys = [
+      "name",
+      "views",
+      "uniqueViews",
+      "clones",
+      "uniqueClones",
+      "yesterdayViews",
+      "yesterdayUniqueViews",
+      "yesterdayClones",
+      "yesterdayUniqueClones",
+    ];
+
+    return columnKeys.map((key) => {
+      return {
+        accessorKey: key,
         header: ({ column }) => {
           return (
             <Button
@@ -100,160 +112,15 @@ function RepoTrafficViewer() {
                 column.toggleSorting(column.getIsSorted() === "asc")
               }
             >
-              Name
+              {key.charAt(0).toUpperCase() + key.slice(1)}
               <CaretSortIcon className="ml-2 h-4 w-4" />
             </Button>
           );
         },
-        cell: ({ row }) => (
-          <a
-            href={row.getValue("url")}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {row.getValue("name")}
-          </a>
-        ),
-      },
-      {
-        accessorKey: "views",
-        header: ({ column }) => {
-          return (
-            <Button
-              variant="ghost"
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            >
-              Views
-              <CaretSortIcon className="ml-2 h-4 w-4" />
-            </Button>
-          );
-        },
-        cell: ({ row }) => <div>{row.getValue("views")}</div>,
-      },
-      {
-        accessorKey: "uniqueViews",
-        header: ({ column }) => {
-          return (
-            <Button
-              variant="ghost"
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            >
-              Unique Views
-              <CaretSortIcon className="ml-2 h-4 w-4" />
-            </Button>
-          );
-        },
-        cell: ({ row }) => <div>{row.getValue("uniqueViews")}</div>,
-      },
-      {
-        accessorKey: "clones",
-        header: ({ column }) => {
-          return (
-            <Button
-              variant="ghost"
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            >
-              Clones
-              <CaretSortIcon className="ml-2 h-4 w-4" />
-            </Button>
-          );
-        },
-        cell: ({ row }) => <div>{row.getValue("clones")}</div>,
-      },
-      {
-        accessorKey: "uniqueClones",
-        header: ({ column }) => {
-          return (
-            <Button
-              variant="ghost"
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            >
-              Unique Clones
-              <CaretSortIcon className="ml-2 h-4 w-4" />
-            </Button>
-          );
-        },
-        cell: ({ row }) => <div>{row.getValue("uniqueClones")}</div>,
-      },
-      {
-        accessorKey: "yesterdayViews",
-        header: ({ column }) => {
-          return (
-            <Button
-              variant="ghost"
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            >
-              Yesterday&apos;s Views
-              <CaretSortIcon className="ml-2 h-4 w-4" />
-            </Button>
-          );
-        },
-        cell: ({ row }) => <div>{row.getValue("yesterdayViews")}</div>,
-      },
-      {
-        accessorKey: "yesterdayUniqueViews",
-        header: ({ column }) => {
-          return (
-            <Button
-              variant="ghost"
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            >
-              Yesterday&apos;s Unique Views
-              <CaretSortIcon className="ml-2 h-4 w-4" />
-            </Button>
-          );
-        },
-        cell: ({ row }) => <div>{row.getValue("yesterdayUniqueViews")}</div>,
-      },
-      {
-        accessorKey: "yesterdayClones",
-        header: ({ column }) => {
-          return (
-            <Button
-              variant="ghost"
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            >
-              Yesterday&apos;s Clones
-              <CaretSortIcon className="ml-2 h-4 w-4" />
-            </Button>
-          );
-        },
-        cell: ({ row }) => <div>{row.getValue("yesterdayClones")}</div>,
-      },
-      {
-        accessorKey: "yesterdayUniqueClones",
-        header: ({ column }) => {
-          return (
-            <Button
-              variant="ghost"
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            >
-              Yesterday&apos;s Unique Clones
-              <CaretSortIcon className="ml-2 h-4 w-4" />
-            </Button>
-          );
-        },
-        cell: ({ row }) => <div>{row.getValue("yesterdayUniqueClones")}</div>,
-      },
-    ],
-    []
-  );
+        cell: ({ row }) => <div>{row.getValue(key)}</div>,
+      };
+    });
+  }, []);
   const table = useReactTable({
     data,
     columns,
@@ -302,7 +169,7 @@ function RepoTrafficViewer() {
                     data-state={row.getIsSelected() && "selected"}
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
+                      <TableCell key={cell.id} className="text-center">
                         {flexRender(
                           cell.column.columnDef.cell,
                           cell.getContext()
