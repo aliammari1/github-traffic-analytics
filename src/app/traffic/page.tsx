@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { Octokit } from "octokit";
 import {
   Table,
@@ -19,7 +19,6 @@ import {
 } from "@tanstack/react-table";
 import "../globals.css";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { CaretSortIcon } from "@radix-ui/react-icons";
 
@@ -51,7 +50,6 @@ function RepoTrafficViewer() {
       sort: "updated",
       direction: "desc",
     });
-
     const reposWithTrafficData = await Promise.all(
       data.map(async (repo: any) => {
         const { data: views } = await octokit.request(
