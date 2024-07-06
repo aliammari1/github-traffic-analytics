@@ -1,6 +1,5 @@
 "use client";
-import React, { useState, useMemo } from "react";
-import { Octokit } from "octokit";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -21,69 +20,20 @@ import "../globals.css";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CaretSortIcon } from "@radix-ui/react-icons";
+import axios from "axios";
+import { RepoData } from "@/constants/RepoData";
+import Link from "next/link";
 
 function RepoTrafficViewer() {
-  const octokit = new Octokit({
-    auth: `${process.env.NEXT_PUBLIC_GITHUB_TOKEN}`,
-  });
-
-  type RepoData = {
-    name: string;
-    url: string;
-    views: number;
-    uniqueViews: number;
-    clones: number;
-    uniqueClones: number;
-    yesterdayViews: number;
-    yesterdayUniqueViews: number;
-    yesterdayClones: number;
-    yesterdayUniqueClones: number;
+  const [repos, setRepos] = useState<RepoData[]>([]);
+  const fetchRepos = async () => {
+    const data = (await axios.get("/api/repos")).data;
+    setRepos(data);
   };
 
-  const [repos, setRepos] = useState<RepoData[]>([]);
-
-  async function fetchRepos() {
-    const { data } = await octokit.request("GET /user/repos", {
-      _page: 100,
-      visibility: "public",
-      affiliation: "owner",
-      sort: "updated",
-      direction: "desc",
-    });
-    const reposWithTrafficData = await Promise.all(
-      data.map(async (repo: any) => {
-        const { data: views } = await octokit.request(
-          `GET /repos/${repo.owner.login}/${repo.name}/traffic/views`
-        );
-        const { data: clones } = await octokit.request(
-          `GET /repos/${repo.owner.login}/${repo.name}/traffic/clones`
-        );
-        const today = new Date().toISOString().slice(0, 10);
-        const todayViews = views.views.find(
-          (view: any) => view.timestamp.slice(0, 10) === today
-        ) || { count: 0, uniques: 0 };
-        const todayClones = clones.clones.find(
-          (clone: any) => clone.timestamp.slice(0, 10) === today
-        ) || { count: 0, uniques: 0 };
-
-        return {
-          name: repo.name,
-          url: repo.html_url,
-          views: views.count,
-          uniqueViews: views.uniques,
-          clones: clones.count,
-          uniqueClones: clones.uniques,
-          yesterdayViews: views.count - todayViews.count,
-          yesterdayUniqueViews: views.uniques - todayViews.uniques,
-          yesterdayClones: clones.count - todayClones.count,
-          yesterdayUniqueClones: clones.uniques - todayClones.uniques,
-        };
-      })
-    );
-    setRepos(reposWithTrafficData);
-  }
-
-  fetchRepos();
+  useEffect(() => {
+    fetchRepos();
+  }, []);
 
   const data = repos;
   const columns: ColumnDef<RepoData>[] = useMemo(() => {
@@ -115,7 +65,15 @@ function RepoTrafficViewer() {
             </Button>
           );
         },
-        cell: ({ row }) => <div>{row.getValue(key)}</div>,
+        cell: ({ row }) => (
+          <div>
+            {row.index === 0 ? (
+              <Link href={row.original.url} target="_blank">{row.getValue(key)}</Link>
+            ) : (
+              row.getValue(key)
+            )}
+          </div>
+        ),
       };
     });
   }, []);
