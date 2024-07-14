@@ -3,8 +3,6 @@ import { Octokit } from "octokit";
 class OctokitClient {
   private static instance: Octokit | null = null;
 
-  private constructor() {}
-
   public static getInstance(): Octokit {
     if (!OctokitClient.instance) {
       OctokitClient.instance = new Octokit({

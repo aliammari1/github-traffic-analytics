@@ -61,14 +61,16 @@ function RepoTrafficViewer() {
               }
             >
               {key.charAt(0).toUpperCase() + key.slice(1)}
-              <CaretSortIcon className="ml-2 h-4 w-4" />
+              <CaretSortIcon className="ml-2 size-4" />
             </Button>
           );
         },
         cell: ({ row }) => (
           <div>
             {row.index === 0 ? (
-              <Link href={row.original.url} target="_blank">{row.getValue(key)}</Link>
+              <Link href={row.original.url} target="_blank">
+                {row.getValue(key)}
+              </Link>
             ) : (
               row.getValue(key)
             )}
