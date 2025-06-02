@@ -89,10 +89,4 @@ Licensed under the [MIT License](LICENSE).
 
 ---
 
-## 🖼️ Repository Visualization
-
-![Repository Visualization](https://raw.githubusercontent.com/aliammari1/github-traffic-analytics/master/assets/repo_image_github-traffic-analytics.png)
-
----
-
 > Made with ❤️ by [aliammari1](https://github.com/aliammari1)
