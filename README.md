@@ -48,7 +48,7 @@ Easily visualize views, clones, and trends for all your public GitHub repos with
    - Create a `.env.local` file (if not present)
    - Add your GitHub personal access token:
      ```
-     NEXT_PUBLIC_GITHUB_TOKEN=your_personal_access_token
+     GITHUB_TOKEN=your_personal_access_token
      ```
    - _Your token requires **repo** and **repo:status** scopes_
 
@@ -59,6 +59,28 @@ Easily visualize views, clones, and trends for all your public GitHub repos with
    yarn dev
    ```
    Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+---
+
+## 🚀 Deployment
+
+### Vercel Deployment
+
+1. **Prérequis**
+   - Avoir un token GitHub avec les permissions **repo** (accès complet aux dépôts)
+   - Créer le token sur [GitHub Settings > Developer settings > Personal access tokens](https://github.com/settings/tokens)
+
+2. **Configuration Vercel**
+   - Connectez votre repo GitHub à Vercel
+   - Dans les paramètres du projet Vercel, ajoutez la variable d'environnement :
+     ```
+     GITHUB_TOKEN=your_personal_access_token
+     ```
+   - **Important :** Ne pas utiliser `NEXT_PUBLIC_` pour cette variable car elle contient des données sensibles
+
+3. **Déployer**
+   - Vercel déploiera automatiquement à chaque push sur la branche principale
+   - L'application sera accessible via l'URL fournie par Vercel
 
 ---
 
