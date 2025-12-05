@@ -1,323 +1,225 @@
 "use client";
-import { motion } from "framer-motion";
-import { useState } from "react";
-import { Spotlight } from "@/components/aceternity/Spotlight";
-import { TextGenerateEffect } from "@/components/aceternity/TextGenerateEffect";
-import { BentoGrid, BentoGridItem } from "@/components/aceternity/BentoGrid";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { 
-  GitBranch, 
-  Star, 
-  GitCommit, 
-  Eye, 
-  Download, 
-  Users, 
-  Calendar,
-  Code,
-  Activity,
-  TrendingUp
-} from "lucide-react";
 
-const repositories = [
-  {
-    id: 1,
-    name: "react-dashboard",
-    description: "Dashboard moderne avec React et TypeScript",
-    language: "TypeScript",
-    stars: 245,
-    forks: 67,
-    views: 1240,
-    commits: 156,
-    lastUpdate: "2 heures",
-    isPrivate: false,
-    gradient: "from-blue-500 to-cyan-500"
-  },
-  {
-    id: 2,
-    name: "python-api-server",
-    description: "API REST performante avec FastAPI",
-    language: "Python",
-    stars: 89,
-    forks: 23,
-    views: 567,
-    commits: 234,
-    lastUpdate: "1 jour",
-    isPrivate: true,
-    gradient: "from-green-500 to-emerald-500"
-  },
-  {
-    id: 3,
-    name: "nextjs-portfolio",
-    description: "Portfolio personnel avec Next.js 15",
-    language: "JavaScript",
-    stars: 178,
-    forks: 45,
-    views: 890,
-    commits: 89,
-    lastUpdate: "3 heures",
-    isPrivate: false,
-    gradient: "from-purple-500 to-pink-500"
-  },
-  {
-    id: 4,
-    name: "mobile-app-flutter",
-    description: "Application mobile cross-platform",
-    language: "Dart",
-    stars: 312,
-    forks: 98,
-    views: 2100,
-    commits: 278,
-    lastUpdate: "5 heures",
-    isPrivate: false,
-    gradient: "from-orange-500 to-red-500"
-  }
-];
+import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Repository } from "@/lib/github";
+import {
+  GitBranch,
+  Star,
+  Eye,
+  ArrowLeft,
+  ExternalLink,
+  Calendar,
+  GitFork,
+} from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 
 export default function RepositoriesPage() {
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const [repositories, setRepositories] = useState<Repository[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<"all" | "owned" | "accessible">("all");
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/");
+    }
+  }, [status, router]);
+
+  useEffect(() => {
+    if (session) {
+      fetchRepositories();
+    }
+  }, [session]);
+
+  const fetchRepositories = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/repositories");
+      if (!response.ok) throw new Error("Failed to fetch repositories");
+      const data = await response.json();
+      setRepositories(data);
+    } catch (error) {
+      console.error("Error fetching repositories:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredRepos = repositories.filter((repo) => {
+    if (filter === "owned") return repo.owner.login === session?.user?.name;
+    if (filter === "accessible") return repo.permissions?.admin || repo.permissions?.push;
+    return true;
+  });
+
+  const totalStars = repositories.reduce((acc, r) => acc + r.stargazers_count, 0);
+  const totalForks = repositories.reduce((acc, r) => acc + r.forks_count, 0);
+  const accessibleCount = repositories.filter(
+    (r) => r.permissions?.admin || r.permissions?.push
+  ).length;
+
+  if (status === "loading" || loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+          <p className="text-sm text-muted-foreground">Loading repositories...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return null;
+  }
 
   return (
-    <div className="min-h-screen relative overflow-hidden p-8">
-      <Spotlight className="absolute -top-40 left-0 md:left-60 md:-top-20" fill="rgba(168, 85, 247, 0.1)" />
-      
-      <div className="relative z-10 max-w-7xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="mb-12"
-        >
-          <TextGenerateEffect
-            words="Vos Repositories GitHub"
-            className="text-4xl font-bold text-white mb-4"
-          />
-          <p className="text-xl text-gray-300 max-w-3xl mb-8">
-            Explorez vos repositories avec des insights détaillés et des métriques avancées.
-          </p>
-          
-          <div className="flex gap-4 items-center">
-            <Button
-              variant={viewMode === 'grid' ? 'default' : 'outline'}
-              onClick={() => setViewMode('grid')}
-              className="bg-white/10 border-white/20"
-            >
-              Vue Grille
-            </Button>
-            <Button
-              variant={viewMode === 'list' ? 'default' : 'outline'}
-              onClick={() => setViewMode('list')}
-              className="bg-white/10 border-white/20"
-            >
-              Vue Liste
-            </Button>
-            <Badge variant="outline" className="border-purple-400/30 text-purple-400">
-              {repositories.length} repositories
-            </Badge>
+    <div className="min-h-screen">
+      {/* Header */}
+      <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-sm">
+        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Link href="/">
+              <Button variant="ghost" size="sm" className="gap-2">
+                <ArrowLeft className="h-4 w-4" />
+                Back
+              </Button>
+            </Link>
+            <span className="font-semibold">Repositories</span>
           </div>
-        </motion.div>
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-muted-foreground">{session.user?.name}</span>
+            {session.user?.image && (
+              <img src={session.user.image} alt="" className="w-8 h-8 rounded-full" />
+            )}
+          </div>
+        </div>
+      </header>
 
-        {/* Repository Stats Overview */}
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
-          className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12"
-        >
-          <Card className="bg-black/40 border-white/10 backdrop-blur-xl">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-400">Total Étoiles</p>
-                  <p className="text-2xl font-bold text-white">824</p>
-                </div>
-                <Star className="w-8 h-8 text-yellow-400" />
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-black/40 border-white/10 backdrop-blur-xl">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-400">Total Forks</p>
-                  <p className="text-2xl font-bold text-white">233</p>
-                </div>
-                <GitBranch className="w-8 h-8 text-blue-400" />
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-black/40 border-white/10 backdrop-blur-xl">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-400">Total Vues</p>
-                  <p className="text-2xl font-bold text-white">4,797</p>
-                </div>
-                <Eye className="w-8 h-8 text-green-400" />
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-black/40 border-white/10 backdrop-blur-xl">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-400">Commits</p>
-                  <p className="text-2xl font-bold text-white">757</p>
-                </div>
-                <GitCommit className="w-8 h-8 text-purple-400" />
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+      <main className="max-w-6xl mx-auto px-6 py-8 space-y-8">
+        {/* Stats Overview */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 opacity-0 animate-fade-in">
+          <div className="p-4 rounded-lg border border-border">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-muted-foreground">Repositories</span>
+              <GitBranch className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div className="text-2xl font-bold">{repositories.length}</div>
+          </div>
+          <div className="p-4 rounded-lg border border-border">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-muted-foreground">Total Stars</span>
+              <Star className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div className="text-2xl font-bold">{totalStars.toLocaleString()}</div>
+          </div>
+          <div className="p-4 rounded-lg border border-border">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-muted-foreground">Total Forks</span>
+              <GitFork className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div className="text-2xl font-bold">{totalForks.toLocaleString()}</div>
+          </div>
+          <div className="p-4 rounded-lg border border-border">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-muted-foreground">Traffic Access</span>
+              <Eye className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div className="text-2xl font-bold">{accessibleCount}</div>
+          </div>
+        </div>
 
-        {/* Repositories Grid/List */}
-        {viewMode === 'grid' ? (
-          <BentoGrid className="max-w-full mx-auto">
-            {repositories.map((repo, index) => (
-              <motion.div
+        {/* Filter */}
+        <div className="flex items-center gap-2 opacity-0 animate-fade-in-up animation-delay-100">
+          <span className="text-sm text-muted-foreground mr-2">Filter:</span>
+          {(["all", "owned", "accessible"] as const).map((f) => (
+            <Button
+              key={f}
+              variant={filter === f ? "default" : "outline"}
+              size="sm"
+              onClick={() => setFilter(f)}
+              className="capitalize"
+            >
+              {f === "accessible" ? "Traffic Available" : f}
+            </Button>
+          ))}
+        </div>
+
+        {/* Repository List */}
+        <div className="space-y-2 opacity-0 animate-fade-in-up animation-delay-200">
+          {filteredRepos.length === 0 ? (
+            <div className="p-8 text-center border border-border rounded-lg">
+              <GitBranch className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p className="text-muted-foreground">No repositories found</p>
+            </div>
+          ) : (
+            filteredRepos.map((repo) => (
+              <div
                 key={repo.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.4 + index * 0.1 }}
+                className="p-4 rounded-lg border border-border hover:border-foreground/20 transition-colors"
               >
-                <BentoGridItem
-                  title={repo.name}
-                  description={repo.description}
-                  header={
-                    <div className={`flex flex-1 w-full h-full min-h-[6rem] rounded-xl bg-gradient-to-br ${repo.gradient} relative overflow-hidden`}>
-                      <div className="absolute top-4 right-4 flex gap-2">
-                        {repo.isPrivate && (
-                          <Badge variant="secondary" className="bg-black/20 text-white text-xs">
-                            Privé
-                          </Badge>
-                        )}
-                        <Badge variant="secondary" className="bg-black/20 text-white text-xs">
-                          {repo.language}
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <a
+                        href={`https://github.com/${repo.full_name}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium hover:underline flex items-center gap-1"
+                      >
+                        {repo.name}
+                        <ExternalLink className="h-3 w-3 opacity-50" />
+                      </a>
+                      {repo.private && (
+                        <Badge variant="secondary" className="text-xs">
+                          Private
                         </Badge>
-                      </div>
-                      <div className="absolute bottom-4 left-4 text-white">
-                        <div className="flex items-center gap-4 text-sm">
-                          <span className="flex items-center gap-1">
-                            <Star className="w-4 h-4" />
-                            {repo.stars}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <GitBranch className="w-4 h-4" />
-                            {repo.forks}
-                          </span>
-                        </div>
-                      </div>
+                      )}
+                      {(repo.permissions?.admin || repo.permissions?.push) && (
+                        <Badge variant="outline" className="text-xs">
+                          Traffic Available
+                        </Badge>
+                      )}
                     </div>
-                  }
-                  className={index === 0 || index === 3 ? "md:col-span-2" : ""}
-                />
-              </motion.div>
-            ))}
-          </BentoGrid>
-        ) : (
-          <div className="space-y-4">
-            {repositories.map((repo, index) => (
-              <motion.div
-                key={repo.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.6, delay: 0.4 + index * 0.1 }}
-              >
-                <Card className="bg-black/40 border-white/10 backdrop-blur-xl hover:bg-black/60 transition-all duration-300 cursor-pointer">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-xl font-semibold text-white">{repo.name}</h3>
-                          {repo.isPrivate && (
-                            <Badge variant="outline" className="border-yellow-400/30 text-yellow-400 text-xs">
-                              Privé
-                            </Badge>
-                          )}
-                          <Badge variant="outline" className="border-blue-400/30 text-blue-400 text-xs">
-                            {repo.language}
-                          </Badge>
-                        </div>
-                        <p className="text-gray-300 mb-4">{repo.description}</p>
-                        <div className="flex items-center gap-6 text-sm text-gray-400">
-                          <span className="flex items-center gap-1">
-                            <Star className="w-4 h-4" />
-                            {repo.stars} étoiles
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <GitBranch className="w-4 h-4" />
-                            {repo.forks} forks
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Eye className="w-4 h-4" />
-                            {repo.views} vues
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <GitCommit className="w-4 h-4" />
-                            {repo.commits} commits
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-4 h-4" />
-                            Mis à jour {repo.lastUpdate}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" className="border-white/20 text-white">
-                          <Activity className="w-4 h-4 mr-2" />
-                          Analytics
-                        </Button>
-                        <Button variant="outline" size="sm" className="border-white/20 text-white">
-                          <Code className="w-4 h-4 mr-2" />
-                          Code
-                        </Button>
-                      </div>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      {repo.owner.login}
+                    </p>
+                    {repo.description && (
+                      <p className="text-sm text-muted-foreground line-clamp-1 mb-2">
+                        {repo.description}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      {repo.language && <span>{repo.language}</span>}
+                      <span className="flex items-center gap-1">
+                        <Star className="h-3 w-3" />
+                        {repo.stargazers_count}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <GitFork className="h-3 w-3" />
+                        {repo.forks_count}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {repo.updated_at
+                          ? formatDistanceToNow(new Date(repo.updated_at), {
+                              addSuffix: true,
+                            })
+                          : "Unknown"}
+                      </span>
                     </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        )}
-
-        {/* Quick Actions */}
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.8 }}
-          className="mt-12"
-        >
-          <Card className="bg-black/40 border-white/10 backdrop-blur-xl">
-            <CardHeader>
-              <CardTitle className="text-white text-2xl">Actions Rapides</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Button className="h-20 flex flex-col gap-2 bg-gradient-to-br from-blue-500 to-cyan-500">
-                  <TrendingUp className="w-6 h-6" />
-                  Analyser Tout
-                </Button>
-                <Button className="h-20 flex flex-col gap-2 bg-gradient-to-br from-green-500 to-emerald-500">
-                  <Download className="w-6 h-6" />
-                  Exporter Données
-                </Button>
-                <Button className="h-20 flex flex-col gap-2 bg-gradient-to-br from-purple-500 to-pink-500">
-                  <Users className="w-6 h-6" />
-                  Collaborateurs
-                </Button>
-                <Button className="h-20 flex flex-col gap-2 bg-gradient-to-br from-orange-500 to-red-500">
-                  <Activity className="w-6 h-6" />
-                  Rapport Global
-                </Button>
+                  </div>
+                </div>
               </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
+            ))
+          )}
+        </div>
+      </main>
     </div>
   );
 }
