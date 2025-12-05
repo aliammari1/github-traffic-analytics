@@ -2,18 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { Repository } from "@/lib/github";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Star, GitFork, Calendar } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { fr } from "date-fns/locale";
 
 interface RepositorySelectorProps {
   onRepositorySelect: (repo: Repository) => void;
@@ -47,14 +38,12 @@ export default function RepositorySelector({
 
   if (loading) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-3">
         {[...Array(5)].map((_, i) => (
-          <Card key={i} className="animate-pulse">
-            <CardContent className="p-6">
-              <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-              <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-            </CardContent>
-          </Card>
+          <div key={i} className="p-4 rounded-lg border border-border animate-pulse">
+            <div className="h-4 bg-secondary rounded w-1/3 mb-2"></div>
+            <div className="h-3 bg-secondary rounded w-1/2"></div>
+          </div>
         ))}
       </div>
     );
@@ -62,103 +51,80 @@ export default function RepositorySelector({
 
   if (error) {
     return (
-      <Card>
-        <CardContent className="p-6 text-center">
-          <p className="text-red-500">Erreur: {error}</p>
-        </CardContent>
-      </Card>
+      <div className="p-6 rounded-lg border border-border text-center">
+        <p className="text-muted-foreground">Error: {error}</p>
+      </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-        <h3 className="font-semibold text-blue-900 mb-2">
-          ℹ️ Information importante
-        </h3>
-        <p className="text-sm text-blue-800">
-          Les données de trafic GitHub ne sont disponibles que pour les dépôts
-          dont vous êtes propriétaire ou pour lesquels vous avez un accès push.
-          Les dépôts marqués &ldquo;Données disponibles&rdquo; devraient fonctionner, les
-          autres sont en &ldquo;Lecture seule&rdquo;.
+      <div className="p-4 rounded-lg border border-border bg-secondary/30">
+        <p className="text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">Note:</span> Traffic data is only available for repositories you own or have push access to.
         </p>
       </div>
-      <h2 className="text-2xl font-bold mb-4">Sélectionnez un dépôt</h2>
-      {repositories.map((repo) => (
-        <Card
-          key={repo.id}
-          className="cursor-pointer hover:shadow-md transition-shadow"
-          onClick={() => onRepositorySelect(repo)}
-        >
-          <CardHeader className="pb-4">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center space-x-3">
-                <Avatar>
-                  <AvatarImage
+
+      <div className="space-y-2">
+        {repositories.map((repo) => (
+          <div
+            key={repo.id}
+            className="group p-4 rounded-lg border border-border hover:border-foreground/20 hover:bg-secondary/50 cursor-pointer transition-all duration-200"
+            onClick={() => onRepositorySelect(repo)}
+          >
+            <div className="flex items-start justify-between mb-2">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-secondary overflow-hidden flex-shrink-0">
+                  <img
                     src={repo.owner.avatar_url}
                     alt={repo.owner.login}
+                    className="w-full h-full object-cover"
                   />
-                  <AvatarFallback>
-                    {repo.owner.login[0].toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
+                </div>
                 <div>
-                  <CardTitle className="text-lg">{repo.name}</CardTitle>
-                  <CardDescription className="text-sm">
-                    {repo.owner.login}
-                  </CardDescription>
+                  <h3 className="font-medium group-hover:underline">{repo.name}</h3>
+                  <p className="text-sm text-muted-foreground">{repo.owner.login}</p>
                 </div>
               </div>
-              <div className="flex items-center space-x-2">
-                {repo.private && <Badge variant="secondary">Privé</Badge>}
+              <div className="flex items-center gap-2">
+                {repo.private && (
+                  <Badge variant="secondary" className="text-xs">Private</Badge>
+                )}
                 {repo.permissions?.admin || repo.permissions?.push ? (
-                  <Badge
-                    variant="default"
-                    className="bg-green-100 text-green-800"
-                  >
-                    Données disponibles
-                  </Badge>
+                  <Badge variant="outline" className="text-xs border-foreground/20">Traffic Available</Badge>
                 ) : (
-                  <Badge
-                    variant="outline"
-                    className="text-yellow-600 border-yellow-600"
-                  >
-                    Lecture seule
-                  </Badge>
+                  <Badge variant="outline" className="text-xs text-muted-foreground">Read Only</Badge>
                 )}
               </div>
             </div>
-          </CardHeader>
-          <CardContent className="pt-0">
+            
             {repo.description && (
-              <p className="text-sm text-muted-foreground mb-3">
+              <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
                 {repo.description}
               </p>
             )}
-            <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-              <div className="flex items-center space-x-1">
-                <Star className="h-4 w-4" />
+            
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <Star className="h-3.5 w-3.5" />
                 <span>{repo.stargazers_count}</span>
               </div>
-              <div className="flex items-center space-x-1">
-                <GitFork className="h-4 w-4" />
+              <div className="flex items-center gap-1">
+                <GitFork className="h-3.5 w-3.5" />
                 <span>{repo.forks_count}</span>
               </div>
-              <div className="flex items-center space-x-1">
-                <Calendar className="h-4 w-4" />
+              <div className="flex items-center gap-1">
+                <Calendar className="h-3.5 w-3.5" />
                 <span>
                   {repo.updated_at
-                    ? `Mis à jour ${formatDistanceToNow(
-                        new Date(repo.updated_at),
-                        { addSuffix: true, locale: fr }
-                      )}`
-                    : "Date inconnue"}
+                    ? formatDistanceToNow(new Date(repo.updated_at), { addSuffix: true })
+                    : "Unknown"}
                 </span>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      ))}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

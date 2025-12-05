@@ -18,6 +18,7 @@
     "@radix-ui/react-slot": "^1.2.3",
     "@react-three/drei": "^10.1.2",
     "@tabler/icons-react": "^3.34.0",
+    "@tsparticles/react": "^3.0.0",
     "@types/three": "^0.177.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -25,6 +26,7 @@
     "framer-motion": "^12.16.0",
     "lucide-react": "^0.513.0",
     "mini-svg-data-uri": "^1.4.4",
+    "motion": "^12.19.2",
     "next": "15.3.3",
     "next-auth": "^5.0.0-beta.28",
     "react": "^19.0.0",
@@ -32,10 +34,14 @@
     "react-intersection-observer": "^9.16.0",
     "react-spring": "^10.0.1",
     "react-three-fiber": "^6.0.13",
+    "react-tsparticles": "^2.12.2",
     "react-use-measure": "^2.1.7",
     "recharts": "^2.15.3",
-    "tailwind-merge": "^3.3.0",
-    "three": "^0.177.0"
+    "simplex-noise": "^4.0.3",
+    "tailwind-merge": "^3.3.1",
+    "three": "^0.177.0",
+    "tsparticles": "^3.8.1",
+    "tsparticles-engine": "^2.12.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
