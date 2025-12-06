@@ -10,6 +10,14 @@ import { Repository } from "@/lib/github";
 import { GitBranch, Star, Eye, ArrowLeft, ExternalLink, Calendar, GitFork } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
+/**
+ * Render a repositories dashboard showing stats, filters, and a list of GitHub repositories for the authenticated user.
+ *
+ * The component redirects unauthenticated users to the root route, fetches repository data for the signed-in session,
+ * and displays summary statistics, filter controls, and repository cards (including privacy, traffic access, and metadata).
+ *
+ * @returns A React element containing the repositories dashboard. Returns `null` if there is no active session and shows a loading indicator while repository data is being fetched.
+ */
 export default function RepositoriesPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
