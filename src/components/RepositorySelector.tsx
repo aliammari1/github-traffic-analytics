@@ -10,6 +10,17 @@ interface RepositorySelectorProps {
   onRepositorySelect: (repo: Repository) => void;
 }
 
+/**
+ * Renders a repository selector UI that fetches and displays repositories, allowing the user to pick one.
+ *
+ * Fetches repositories from "/api/repositories" on mount, shows a loading skeleton while fetching,
+ * displays an error message on failure, and renders a list of repository items when successful.
+ * Each repository row shows basic metadata (owner, name, description, stars, forks, last updated)
+ * and badges for privacy and traffic access.
+ *
+ * @param onRepositorySelect - Called with the selected `Repository` when a repository row is clicked
+ * @returns The rendered repository selector UI
+ */
 export default function RepositorySelector({ onRepositorySelect }: RepositorySelectorProps) {
   const [repositories, setRepositories] = useState<Repository[]>([]);
   const [loading, setLoading] = useState(true);

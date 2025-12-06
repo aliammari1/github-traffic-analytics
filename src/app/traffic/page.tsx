@@ -27,6 +27,15 @@ interface AggregatedTraffic {
   viewsData: Array<{ date: string; views: number; uniques: number }>;
 }
 
+/**
+ * Render the traffic analytics dashboard for the authenticated user.
+ *
+ * Fetches the user's repositories and per-repository traffic, aggregates totals and daily views,
+ * and displays summary cards, a traffic chart, and a list of top repositories by stars.
+ * Redirects to the home page when the session is unauthenticated.
+ *
+ * @returns The rendered traffic analytics page as a React element, or `null` when there is no authenticated session.
+ */
 export default function TrafficPage() {
   const { data: session, status } = useSession();
   const router = useRouter();

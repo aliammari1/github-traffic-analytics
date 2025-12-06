@@ -32,6 +32,15 @@ const buttonVariants = cva(
   }
 );
 
+/**
+ * Render a styled button element with configurable visual variant and size, optionally using a Slot as the underlying element.
+ *
+ * @param className - Additional CSS classes to append to the component's computed class list
+ * @param variant - Visual style variant to apply (see `buttonVariants` for available options)
+ * @param size - Size variant to apply (see `buttonVariants` for available options)
+ * @param asChild - If `true`, use a `Slot` as the underlying element so the caller controls the rendered tag; otherwise render a native `button`
+ * @returns The rendered button (or Slot-wrapped) React element
+ */
 function Button({
   className,
   variant,
