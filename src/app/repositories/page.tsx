@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -95,7 +96,13 @@ export default function RepositoriesPage() {
           <div className="flex items-center gap-4">
             <span className="text-sm text-muted-foreground">{session.user?.name}</span>
             {session.user?.image && (
-              <img src={session.user.image} alt="" className="w-8 h-8 rounded-full" />
+              <Image
+                src={session.user.image}
+                alt={session.user.name || "User avatar"}
+                width={32}
+                height={32}
+                className="w-8 h-8 rounded-full"
+              />
             )}
           </div>
         </div>

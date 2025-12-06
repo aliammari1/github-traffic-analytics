@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useSession, signIn } from "next-auth/react";
 import { Repository } from "@/lib/github";
 import RepositorySelector from "@/components/RepositorySelector";
@@ -206,7 +207,13 @@ export default function HomePage() {
             </span>
             <div className="w-8 h-8 rounded-full bg-secondary overflow-hidden">
               {session.user?.image ? (
-                <img src={session.user.image} alt="" className="w-full h-full object-cover" />
+                <Image
+                  src={session.user.image}
+                  alt={session.user.name || "User avatar"}
+                  width={32}
+                  height={32}
+                  className="w-full h-full object-cover"
+                />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-xs">
                   {session.user?.name?.[0] || "U"}
