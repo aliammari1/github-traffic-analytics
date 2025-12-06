@@ -4,7 +4,17 @@ import { useState, useEffect, useCallback } from "react";
 import { Repository } from "@/lib/github";
 import { Button } from "@/components/ui/button";
 import { Eye, Download, ExternalLink, ArrowLeft, Star } from "lucide-react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+} from "recharts";
 import { format } from "date-fns";
 
 interface TrafficData {
@@ -44,6 +54,17 @@ interface TrafficDashboardProps {
   onBack: () => void;
 }
 
+/**
+ * Render a traffic analytics dashboard for the given GitHub repository.
+ *
+ * Displays summary stats (views, clones, stars, referrers), time-series charts for views and
+ * clones over the last 14 days, and tables for top referrers and popular pages. Handles loading
+ * and error states and provides a back action.
+ *
+ * @param repository - GitHub repository object used to fetch and display traffic and metadata.
+ * @param onBack - Callback invoked when the user navigates back from the dashboard.
+ * @returns The rendered dashboard React element.
+ */
 export default function TrafficDashboard({ repository, onBack }: TrafficDashboardProps) {
   const [trafficData, setTrafficData] = useState<TrafficData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -99,9 +120,7 @@ export default function TrafficDashboard({ repository, onBack }: TrafficDashboar
           </Button>
         </div>
         <div className="rounded-lg border border-border p-8 text-center">
-          <p className="text-muted-foreground mb-4">
-            {error || "Unable to load traffic data"}
-          </p>
+          <p className="text-muted-foreground mb-4">{error || "Unable to load traffic data"}</p>
           {error?.includes("denied") || error?.includes("403") ? (
             <p className="text-sm text-muted-foreground mb-4">
               Traffic data is only available for repositories you own or have push access to.
@@ -142,9 +161,9 @@ export default function TrafficDashboard({ repository, onBack }: TrafficDashboar
           </div>
         </div>
         <Button variant="outline" size="sm" asChild>
-          <a 
-            href={`https://github.com/${repository.full_name}`} 
-            target="_blank" 
+          <a
+            href={`https://github.com/${repository.full_name}`}
+            target="_blank"
             rel="noopener noreferrer"
             className="gap-2"
           >
@@ -184,9 +203,7 @@ export default function TrafficDashboard({ repository, onBack }: TrafficDashboar
             <Star className="h-4 w-4 text-muted-foreground" />
           </div>
           <div className="text-2xl font-bold">{repository.stargazers_count.toLocaleString()}</div>
-          <p className="text-xs text-muted-foreground mt-1">
-            {repository.forks_count} forks
-          </p>
+          <p className="text-xs text-muted-foreground mt-1">{repository.forks_count} forks</p>
         </div>
 
         <div className="p-4 rounded-lg border border-border">
@@ -195,9 +212,7 @@ export default function TrafficDashboard({ repository, onBack }: TrafficDashboar
             <ExternalLink className="h-4 w-4 text-muted-foreground" />
           </div>
           <div className="text-2xl font-bold">{trafficData.referrers.length}</div>
-          <p className="text-xs text-muted-foreground mt-1">
-            Traffic sources
-          </p>
+          <p className="text-xs text-muted-foreground mt-1">Traffic sources</p>
         </div>
       </div>
 
@@ -213,29 +228,29 @@ export default function TrafficDashboard({ repository, onBack }: TrafficDashboar
               <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
               <XAxis dataKey="date" stroke="#737373" fontSize={12} />
               <YAxis stroke="#737373" fontSize={12} />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: '#0a0a0a', 
-                  border: '1px solid #262626',
-                  borderRadius: '8px'
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "#0a0a0a",
+                  border: "1px solid #262626",
+                  borderRadius: "8px",
                 }}
-                labelStyle={{ color: '#fafafa' }}
+                labelStyle={{ color: "#fafafa" }}
               />
-              <Line 
-                type="monotone" 
-                dataKey="views" 
-                stroke="#fafafa" 
+              <Line
+                type="monotone"
+                dataKey="views"
+                stroke="#fafafa"
                 strokeWidth={2}
                 dot={false}
-                name="Views" 
+                name="Views"
               />
-              <Line 
-                type="monotone" 
-                dataKey="visitors" 
-                stroke="#737373" 
+              <Line
+                type="monotone"
+                dataKey="visitors"
+                stroke="#737373"
                 strokeWidth={2}
                 dot={false}
-                name="Unique visitors" 
+                name="Unique visitors"
               />
             </LineChart>
           </ResponsiveContainer>
@@ -251,13 +266,13 @@ export default function TrafficDashboard({ repository, onBack }: TrafficDashboar
               <CartesianGrid strokeDasharray="3 3" stroke="#262626" />
               <XAxis dataKey="date" stroke="#737373" fontSize={12} />
               <YAxis stroke="#737373" fontSize={12} />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: '#0a0a0a', 
-                  border: '1px solid #262626',
-                  borderRadius: '8px'
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "#0a0a0a",
+                  border: "1px solid #262626",
+                  borderRadius: "8px",
                 }}
-                labelStyle={{ color: '#fafafa' }}
+                labelStyle={{ color: "#fafafa" }}
               />
               <Bar dataKey="clones" fill="#fafafa" radius={[4, 4, 0, 0]} name="Clones" />
             </BarChart>
@@ -280,9 +295,7 @@ export default function TrafficDashboard({ repository, onBack }: TrafficDashboar
             ) : (
               trafficData.referrers.slice(0, 5).map((referrer, index) => (
                 <div key={index} className="p-4 flex items-center justify-between">
-                  <span className="font-medium text-sm">
-                    {referrer.referrer || "Direct"}
-                  </span>
+                  <span className="font-medium text-sm">{referrer.referrer || "Direct"}</span>
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
                     <span>{referrer.count} views</span>
                     <span>{referrer.uniques} unique</span>

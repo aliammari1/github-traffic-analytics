@@ -1,0 +1,6 @@
+onlyBuiltDependencies:
+  - '@tsparticles/engine'
+  - react-tsparticles
+  - sharp
+  - tsparticles-engine
+  - unrs-resolver

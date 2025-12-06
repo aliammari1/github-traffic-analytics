@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { Repository } from "@/lib/github";
 import { Badge } from "@/components/ui/badge";
 import { Star, GitFork, Calendar } from "lucide-react";
@@ -10,9 +11,18 @@ interface RepositorySelectorProps {
   onRepositorySelect: (repo: Repository) => void;
 }
 
-export default function RepositorySelector({
-  onRepositorySelect,
-}: RepositorySelectorProps) {
+/**
+ * Renders a repository selector UI that fetches and displays repositories, allowing the user to pick one.
+ *
+ * Fetches repositories from "/api/repositories" on mount, shows a loading skeleton while fetching,
+ * displays an error message on failure, and renders a list of repository items when successful.
+ * Each repository row shows basic metadata (owner, name, description, stars, forks, last updated)
+ * and badges for privacy and traffic access.
+ *
+ * @param onRepositorySelect - Called with the selected `Repository` when a repository row is clicked
+ * @returns The rendered repository selector UI
+ */
+export default function RepositorySelector({ onRepositorySelect }: RepositorySelectorProps) {
   const [repositories, setRepositories] = useState<Repository[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +71,8 @@ export default function RepositorySelector({
     <div className="space-y-4">
       <div className="p-4 rounded-lg border border-border bg-secondary/30">
         <p className="text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">Note:</span> Traffic data is only available for repositories you own or have push access to.
+          <span className="font-medium text-foreground">Note:</span> Traffic data is only available
+          for repositories you own or have push access to.
         </p>
       </div>
 
@@ -75,9 +86,11 @@ export default function RepositorySelector({
             <div className="flex items-start justify-between mb-2">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-secondary overflow-hidden flex-shrink-0">
-                  <img
+                  <Image
                     src={repo.owner.avatar_url}
                     alt={repo.owner.login}
+                    width={32}
+                    height={32}
                     className="w-full h-full object-cover"
                   />
                 </div>
@@ -88,22 +101,26 @@ export default function RepositorySelector({
               </div>
               <div className="flex items-center gap-2">
                 {repo.private && (
-                  <Badge variant="secondary" className="text-xs">Private</Badge>
+                  <Badge variant="secondary" className="text-xs">
+                    Private
+                  </Badge>
                 )}
                 {repo.permissions?.admin || repo.permissions?.push ? (
-                  <Badge variant="outline" className="text-xs border-foreground/20">Traffic Available</Badge>
+                  <Badge variant="outline" className="text-xs border-foreground/20">
+                    Traffic Available
+                  </Badge>
                 ) : (
-                  <Badge variant="outline" className="text-xs text-muted-foreground">Read Only</Badge>
+                  <Badge variant="outline" className="text-xs text-muted-foreground">
+                    Read Only
+                  </Badge>
                 )}
               </div>
             </div>
-            
+
             {repo.description && (
-              <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                {repo.description}
-              </p>
+              <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{repo.description}</p>
             )}
-            
+
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-1">
                 <Star className="h-3.5 w-3.5" />
