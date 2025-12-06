@@ -10,7 +10,8 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "GitHub Traffic Analytics",
-  description: "Track and analyze traffic for your GitHub repositories with beautiful visualizations.",
+  description:
+    "Track and analyze traffic for your GitHub repositories with beautiful visualizations.",
   keywords: "GitHub, Analytics, Traffic, Repositories, Developer Tools",
   openGraph: {
     title: "GitHub Traffic Analytics",

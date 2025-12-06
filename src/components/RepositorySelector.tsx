@@ -10,9 +10,7 @@ interface RepositorySelectorProps {
   onRepositorySelect: (repo: Repository) => void;
 }
 
-export default function RepositorySelector({
-  onRepositorySelect,
-}: RepositorySelectorProps) {
+export default function RepositorySelector({ onRepositorySelect }: RepositorySelectorProps) {
   const [repositories, setRepositories] = useState<Repository[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +59,8 @@ export default function RepositorySelector({
     <div className="space-y-4">
       <div className="p-4 rounded-lg border border-border bg-secondary/30">
         <p className="text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">Note:</span> Traffic data is only available for repositories you own or have push access to.
+          <span className="font-medium text-foreground">Note:</span> Traffic data is only available
+          for repositories you own or have push access to.
         </p>
       </div>
 
@@ -88,22 +87,26 @@ export default function RepositorySelector({
               </div>
               <div className="flex items-center gap-2">
                 {repo.private && (
-                  <Badge variant="secondary" className="text-xs">Private</Badge>
+                  <Badge variant="secondary" className="text-xs">
+                    Private
+                  </Badge>
                 )}
                 {repo.permissions?.admin || repo.permissions?.push ? (
-                  <Badge variant="outline" className="text-xs border-foreground/20">Traffic Available</Badge>
+                  <Badge variant="outline" className="text-xs border-foreground/20">
+                    Traffic Available
+                  </Badge>
                 ) : (
-                  <Badge variant="outline" className="text-xs text-muted-foreground">Read Only</Badge>
+                  <Badge variant="outline" className="text-xs text-muted-foreground">
+                    Read Only
+                  </Badge>
                 )}
               </div>
             </div>
-            
+
             {repo.description && (
-              <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                {repo.description}
-              </p>
+              <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{repo.description}</p>
             )}
-            
+
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-1">
                 <Star className="h-3.5 w-3.5" />
