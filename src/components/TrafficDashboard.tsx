@@ -54,6 +54,17 @@ interface TrafficDashboardProps {
   onBack: () => void;
 }
 
+/**
+ * Render a traffic analytics dashboard for the given GitHub repository.
+ *
+ * Displays summary stats (views, clones, stars, referrers), time-series charts for views and
+ * clones over the last 14 days, and tables for top referrers and popular pages. Handles loading
+ * and error states and provides a back action.
+ *
+ * @param repository - GitHub repository object used to fetch and display traffic and metadata.
+ * @param onBack - Callback invoked when the user navigates back from the dashboard.
+ * @returns The rendered dashboard React element.
+ */
 export default function TrafficDashboard({ repository, onBack }: TrafficDashboardProps) {
   const [trafficData, setTrafficData] = useState<TrafficData | null>(null);
   const [loading, setLoading] = useState(true);

@@ -2,6 +2,14 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
+/**
+ * Render a styled input element whose base utility classes are merged with any provided `className`.
+ *
+ * @param className - Additional CSS classes to append to the component's base styling (overrides/extends default styles)
+ * @param type - The HTML input `type` attribute to apply
+ * @param props - All other native input props are forwarded to the underlying `<input>` element
+ * @returns A JSX input element with merged classes, ARIA-aware focus/invalid styles, and forwarded attributes
+ */
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {
   return (
     <input
