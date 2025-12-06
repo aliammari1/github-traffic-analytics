@@ -8,6 +8,15 @@ import TrafficDashboard from "@/components/TrafficDashboard";
 import { Button } from "@/components/ui/button";
 import { Github, TrendingUp, Eye, GitFork, ArrowRight, BarChart3, Zap, Lock } from "lucide-react";
 
+/**
+ * Render the application's homepage and control UI flow based on authentication and repository selection.
+ *
+ * The component displays a centered loading indicator while auth status is loading, a marketing
+ * and sign-in layout for unauthenticated users, and for authenticated users shows a header with
+ * user info and either a repository selector or the traffic dashboard for a selected repository.
+ *
+ * @returns The homepage React element that adapts its content according to the session status and selected repository.
+ */
 export default function HomePage() {
   const { data: session, status } = useSession();
   const [selectedRepository, setSelectedRepository] = useState<Repository | null>(null);
