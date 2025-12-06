@@ -1,13 +1,22 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { TrendingUp, Eye, GitBranch, Star, ArrowLeft, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Repository } from "@/lib/github";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
 interface AggregatedTraffic {
   totalViews: number;
@@ -19,6 +28,15 @@ interface AggregatedTraffic {
   viewsData: Array<{ date: string; views: number; uniques: number }>;
 }
 
+/**
+ * Render the traffic analytics dashboard for the authenticated user.
+ *
+ * Fetches the user's repositories and per-repository traffic, aggregates totals and daily views,
+ * and displays summary cards, a traffic chart, and a list of top repositories by stars.
+ * Redirects to the home page when the session is unauthenticated.
+ *
+ * @returns The rendered traffic analytics page as a React element, or `null` when there is no authenticated session.
+ */
 export default function TrafficPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -41,7 +59,7 @@ export default function TrafficPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      
+
       // Fetch repositories
       const reposResponse = await fetch("/api/repositories");
       if (!reposResponse.ok) throw new Error("Failed to fetch repositories");
@@ -50,7 +68,7 @@ export default function TrafficPage() {
 
       // Aggregate traffic from accessible repos (limit to first 5 for performance)
       const accessibleRepos = repos
-        .filter(r => r.permissions?.admin || r.permissions?.push)
+        .filter((r) => r.permissions?.admin || r.permissions?.push)
         .slice(0, 5);
 
       let totalViews = 0;
@@ -72,14 +90,19 @@ export default function TrafficPage() {
             totalCloneUniques += data.clones.uniques;
 
             // Aggregate daily views
-            data.views.views?.forEach((v: { timestamp: string; count: number; uniques: number }) => {
-              const date = new Date(v.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-              if (!viewsMap[date]) {
-                viewsMap[date] = { views: 0, uniques: 0 };
+            data.views.views?.forEach(
+              (v: { timestamp: string; count: number; uniques: number }) => {
+                const date = new Date(v.timestamp).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                });
+                if (!viewsMap[date]) {
+                  viewsMap[date] = { views: 0, uniques: 0 };
+                }
+                viewsMap[date].views += v.count;
+                viewsMap[date].uniques += v.uniques;
               }
-              viewsMap[date].views += v.count;
-              viewsMap[date].uniques += v.uniques;
-            });
+            );
           }
         } catch (e) {
           console.error(`Failed to fetch traffic for ${repo.name}`, e);
@@ -136,11 +159,15 @@ export default function TrafficPage() {
             <span className="font-semibold">Traffic Analytics</span>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">
-              {session.user?.name}
-            </span>
+            <span className="text-sm text-muted-foreground">{session.user?.name}</span>
             {session.user?.image && (
-              <img src={session.user.image} alt="" className="w-8 h-8 rounded-full" />
+              <Image
+                src={session.user.image}
+                alt={session.user.name || "User avatar"}
+                width={32}
+                height={32}
+                className="w-8 h-8 rounded-full"
+              />
             )}
           </div>
         </div>
@@ -187,12 +214,8 @@ export default function TrafficPage() {
               <span className="text-sm text-muted-foreground">Repositories</span>
               <GitBranch className="h-5 w-5 text-muted-foreground" />
             </div>
-            <div className="text-3xl font-bold mb-1">
-              {trafficData?.repoCount || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Accessible repositories
-            </p>
+            <div className="text-3xl font-bold mb-1">{trafficData?.repoCount || 0}</div>
+            <p className="text-xs text-muted-foreground">Accessible repositories</p>
           </div>
 
           <div className="p-6 rounded-lg border border-border">
@@ -203,9 +226,7 @@ export default function TrafficPage() {
             <div className="text-3xl font-bold mb-1">
               {trafficData?.totalStars.toLocaleString() || "0"}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Across all repositories
-            </p>
+            <p className="text-xs text-muted-foreground">Across all repositories</p>
           </div>
         </div>
 
@@ -271,7 +292,13 @@ export default function TrafficPage() {
                 <div key={repo.id} className="p-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-secondary overflow-hidden">
-                      <img src={repo.owner.avatar_url} alt="" className="w-full h-full" />
+                      <Image
+                        src={repo.owner.avatar_url}
+                        alt={repo.owner.login}
+                        width={32}
+                        height={32}
+                        className="w-full h-full"
+                      />
                     </div>
                     <div>
                       <p className="text-sm font-medium">{repo.name}</p>

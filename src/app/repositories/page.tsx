@@ -1,23 +1,24 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Repository } from "@/lib/github";
-import {
-  GitBranch,
-  Star,
-  Eye,
-  ArrowLeft,
-  ExternalLink,
-  Calendar,
-  GitFork,
-} from "lucide-react";
+import { GitBranch, Star, Eye, ArrowLeft, ExternalLink, Calendar, GitFork } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
+/**
+ * Render a repositories dashboard showing stats, filters, and a list of GitHub repositories for the authenticated user.
+ *
+ * The component redirects unauthenticated users to the root route, fetches repository data for the signed-in session,
+ * and displays summary statistics, filter controls, and repository cards (including privacy, traffic access, and metadata).
+ *
+ * @returns A React element containing the repositories dashboard. Returns `null` if there is no active session and shows a loading indicator while repository data is being fetched.
+ */
 export default function RepositoriesPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -95,7 +96,13 @@ export default function RepositoriesPage() {
           <div className="flex items-center gap-4">
             <span className="text-sm text-muted-foreground">{session.user?.name}</span>
             {session.user?.image && (
-              <img src={session.user.image} alt="" className="w-8 h-8 rounded-full" />
+              <Image
+                src={session.user.image}
+                alt={session.user.name || "User avatar"}
+                width={32}
+                height={32}
+                className="w-8 h-8 rounded-full"
+              />
             )}
           </div>
         </div>
@@ -186,9 +193,7 @@ export default function RepositoriesPage() {
                         </Badge>
                       )}
                     </div>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      {repo.owner.login}
-                    </p>
+                    <p className="text-sm text-muted-foreground mb-2">{repo.owner.login}</p>
                     {repo.description && (
                       <p className="text-sm text-muted-foreground line-clamp-1 mb-2">
                         {repo.description}
