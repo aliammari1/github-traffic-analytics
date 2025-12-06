@@ -43,13 +43,13 @@ export class GitHubService {
   async getRepositories(): Promise<Repository[]> {
     try {
       const { data } = await this.octokit.rest.repos.listForAuthenticatedUser({
-        visibility: 'all',
-        sort: 'updated',
+        visibility: "all",
+        sort: "updated",
         per_page: 100,
       });
       return data;
     } catch (error) {
-      console.error('Error fetching repositories:', error);
+      console.error("Error fetching repositories:", error);
       throw error;
     }
   }
@@ -59,13 +59,15 @@ export class GitHubService {
       const { data } = await this.octokit.rest.repos.getViews({
         owner,
         repo,
-        per: 'day',
+        per: "day",
       });
       return data;
     } catch (error: unknown) {
       console.error(`Error fetching traffic data for ${owner}/${repo}:`, error);
-      if (error instanceof Error && 'status' in error && error.status === 403) {
-        throw new Error("Accès refusé : Vous devez être propriétaire du dépôt ou avoir un accès push pour voir les données de trafic.");
+      if (error instanceof Error && "status" in error && error.status === 403) {
+        throw new Error(
+          "Accès refusé : Vous devez être propriétaire du dépôt ou avoir un accès push pour voir les données de trafic."
+        );
       }
       throw error;
     }
@@ -76,13 +78,15 @@ export class GitHubService {
       const { data } = await this.octokit.rest.repos.getClones({
         owner,
         repo,
-        per: 'day',
+        per: "day",
       });
       return data;
     } catch (error: unknown) {
       console.error(`Error fetching clone data for ${owner}/${repo}:`, error);
-      if (error instanceof Error && 'status' in error && error.status === 403) {
-        throw new Error("Accès refusé : Vous devez être propriétaire du dépôt ou avoir un accès push pour voir les données de trafic.");
+      if (error instanceof Error && "status" in error && error.status === 403) {
+        throw new Error(
+          "Accès refusé : Vous devez être propriétaire du dépôt ou avoir un accès push pour voir les données de trafic."
+        );
       }
       throw error;
     }
@@ -97,8 +101,10 @@ export class GitHubService {
       return data;
     } catch (error: unknown) {
       console.error(`Error fetching referrer data for ${owner}/${repo}:`, error);
-      if (error instanceof Error && 'status' in error && error.status === 403) {
-        throw new Error("Accès refusé : Vous devez être propriétaire du dépôt ou avoir un accès push pour voir les données de trafic.");
+      if (error instanceof Error && "status" in error && error.status === 403) {
+        throw new Error(
+          "Accès refusé : Vous devez être propriétaire du dépôt ou avoir un accès push pour voir les données de trafic."
+        );
       }
       throw error;
     }
@@ -113,8 +119,10 @@ export class GitHubService {
       return data;
     } catch (error: unknown) {
       console.error(`Error fetching popular paths for ${owner}/${repo}:`, error);
-      if (error instanceof Error && 'status' in error && error.status === 403) {
-        throw new Error("Accès refusé : Vous devez être propriétaire du dépôt ou avoir un accès push pour voir les données de trafic.");
+      if (error instanceof Error && "status" in error && error.status === 403) {
+        throw new Error(
+          "Accès refusé : Vous devez être propriétaire du dépôt ou avoir un accès push pour voir les données de trafic."
+        );
       }
       throw error;
     }

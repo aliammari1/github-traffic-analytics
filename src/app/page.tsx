@@ -6,16 +6,7 @@ import { Repository } from "@/lib/github";
 import RepositorySelector from "@/components/RepositorySelector";
 import TrafficDashboard from "@/components/TrafficDashboard";
 import { Button } from "@/components/ui/button";
-import {
-  Github,
-  TrendingUp,
-  Eye,
-  GitFork,
-  ArrowRight,
-  BarChart3,
-  Zap,
-  Lock,
-} from "lucide-react";
+import { Github, TrendingUp, Eye, GitFork, ArrowRight, BarChart3, Zap, Lock } from "lucide-react";
 
 export default function HomePage() {
   const { data: session, status } = useSession();
@@ -42,12 +33,7 @@ export default function HomePage() {
               <BarChart3 className="h-5 w-5" />
               <span className="font-semibold">GitHub Traffic Analytics</span>
             </div>
-            <Button
-              onClick={() => signIn("github")}
-              variant="outline"
-              size="sm"
-              className="gap-2"
-            >
+            <Button onClick={() => signIn("github")} variant="outline" size="sm" className="gap-2">
               <Github className="h-4 w-4" />
               Sign in
             </Button>
@@ -64,24 +50,20 @@ export default function HomePage() {
               </span>
               Now tracking repository analytics
             </div>
-            
+
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 opacity-0 animate-fade-in-up animation-delay-100">
               Understand your
               <br />
               <span className="text-muted-foreground">GitHub traffic</span>
             </h1>
-            
+
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-10 opacity-0 animate-fade-in-up animation-delay-200">
-              Track views, clones, and referrers for your repositories. 
-              Get insights into how developers discover and interact with your projects.
+              Track views, clones, and referrers for your repositories. Get insights into how
+              developers discover and interact with your projects.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center opacity-0 animate-fade-in-up animation-delay-300">
-              <Button
-                onClick={() => signIn("github")}
-                size="lg"
-                className="gap-2 px-8"
-              >
+              <Button onClick={() => signIn("github")} size="lg" className="gap-2 px-8">
                 <Github className="h-5 w-5" />
                 Continue with GitHub
                 <ArrowRight className="h-4 w-4" />
@@ -132,12 +114,10 @@ export default function HomePage() {
           <div className="max-w-5xl mx-auto">
             <div className="grid md:grid-cols-2 gap-12 items-center">
               <div>
-                <h2 className="text-3xl font-bold mb-4">
-                  Built for developers
-                </h2>
+                <h2 className="text-3xl font-bold mb-4">Built for developers</h2>
                 <p className="text-muted-foreground mb-6">
-                  GitHub Traffic Analytics provides a clean, simple interface to understand 
-                  how your open source projects are being discovered and used.
+                  GitHub Traffic Analytics provides a clean, simple interface to understand how your
+                  open source projects are being discovered and used.
                 </p>
                 <div className="space-y-4">
                   <div className="flex items-center gap-3">
@@ -194,9 +174,7 @@ export default function HomePage() {
               <BarChart3 className="h-4 w-4" />
               <span>GitHub Traffic Analytics</span>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Built with Next.js
-            </p>
+            <p className="text-sm text-muted-foreground">Built with Next.js</p>
           </div>
         </footer>
       </div>
@@ -244,7 +222,7 @@ export default function HomePage() {
                 Select a repository to view its traffic analytics
               </p>
             </div>
-            
+
             <div className="opacity-0 animate-fade-in-up animation-delay-100">
               <RepositorySelector onRepositorySelect={setSelectedRepository} />
             </div>

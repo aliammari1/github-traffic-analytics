@@ -7,15 +7,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Repository } from "@/lib/github";
-import {
-  GitBranch,
-  Star,
-  Eye,
-  ArrowLeft,
-  ExternalLink,
-  Calendar,
-  GitFork,
-} from "lucide-react";
+import { GitBranch, Star, Eye, ArrowLeft, ExternalLink, Calendar, GitFork } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 export default function RepositoriesPage() {
@@ -186,9 +178,7 @@ export default function RepositoriesPage() {
                         </Badge>
                       )}
                     </div>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      {repo.owner.login}
-                    </p>
+                    <p className="text-sm text-muted-foreground mb-2">{repo.owner.login}</p>
                     {repo.description && (
                       <p className="text-sm text-muted-foreground line-clamp-1 mb-2">
                         {repo.description}
