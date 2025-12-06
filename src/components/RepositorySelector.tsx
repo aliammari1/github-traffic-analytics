@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { Repository } from "@/lib/github";
 import { Badge } from "@/components/ui/badge";
 import { Star, GitFork, Calendar } from "lucide-react";
@@ -85,9 +86,11 @@ export default function RepositorySelector({ onRepositorySelect }: RepositorySel
             <div className="flex items-start justify-between mb-2">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-secondary overflow-hidden flex-shrink-0">
-                  <img
+                  <Image
                     src={repo.owner.avatar_url}
                     alt={repo.owner.login}
+                    width={32}
+                    height={32}
                     className="w-full h-full object-cover"
                   />
                 </div>
