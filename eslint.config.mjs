@@ -1,16 +1,31 @@
-import { dirname } from "path";
-import { fileURLToPath } from "url";
-import { FlatCompat } from "@eslint/eslintrc";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-});
+// SPDX-License-Identifier: MIT
+// Next 16 removed `next lint`; we drive ESLint directly with `eslint .` and the
+// flat config that `eslint-config-next` ships natively (no FlatCompat/eslintrc).
+import next from "eslint-config-next";
 
 const eslintConfig = [
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
+  {
+    // Without eslintrc's defaults we must declare our own ignore set.
+    ignores: [
+      ".next/**",
+      ".open-next/**",
+      ".wrangler/**",
+      "node_modules/**",
+      "coverage/**",
+      "playwright-report/**",
+      "test-results/**",
+      "next-env.d.ts",
+      // The Nextra docs site is a separate project with its own toolchain.
+      "docs/**",
+    ],
+  },
+  ...next,
+  {
+    files: ["**/*.test.{ts,tsx}", "tests/**/*.{ts,tsx}", "src/test/**/*.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+    },
+  },
 ];
 
 export default eslintConfig;
