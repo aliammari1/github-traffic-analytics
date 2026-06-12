@@ -12,10 +12,15 @@
  * It does not deploy from this environment (no Cloudflare creds); the deploy
  * workflow is gated on CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID secrets.
  */
+import * as Sentry from "@sentry/cloudflare";
 import { upsertDailyCounts, toDayKey, type D1Database, type Metric } from "../src/lib/snapshots";
 
 export interface Env {
   DB: D1Database;
+  /** Optional Sentry DSN — when set, snapshot-cron failures are reported + alerted. */
+  SENTRY_DSN?: string;
+  /** Cloudflare deploy environment label for Sentry (e.g. "production"). */
+  SENTRY_ENVIRONMENT?: string;
 }
 
 interface TrackedRepo {
@@ -97,9 +102,25 @@ const handler = {
     ctx.waitUntil(
       runSnapshots(env)
         .then((r) => console.log(`Snapshot run complete: ${r.repos} repos, ${r.rows} rows`))
-        .catch((err) => console.error("Snapshot run failed:", err))
+        .catch((err) => {
+          // The cron is the headline feature (it beats GitHub's 14-day window). A
+          // silent failure means history quietly stops accumulating, so surface it
+          // to Sentry — wire an alert rule on this event to get paged.
+          console.error("Snapshot run failed:", err);
+          Sentry.captureException(err, { tags: { job: "daily-snapshot" } });
+        })
     );
   },
 };
 
-export default handler;
+// Wrap the Worker with Sentry so uncaught errors in the scheduled handler are
+// reported. No-ops when SENTRY_DSN is unset (local/CI), so nothing else changes.
+export default Sentry.withSentry(
+  (env: Env) => ({
+    dsn: env.SENTRY_DSN,
+    environment: env.SENTRY_ENVIRONMENT ?? "production",
+    tracesSampleRate: 0.1,
+    enabled: Boolean(env.SENTRY_DSN),
+  }),
+  handler
+);
