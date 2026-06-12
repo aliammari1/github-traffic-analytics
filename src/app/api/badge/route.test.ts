@@ -3,7 +3,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 
 const getD1Mock = vi.fn();
-vi.mock("@/lib/d1", () => ({ getD1: () => getD1Mock() }));
+const limitMock = vi.fn().mockResolvedValue({ success: true });
+const getRateLimiterMock = vi.fn().mockResolvedValue({ limit: (o: { key: string }) => limitMock(o) });
+vi.mock("@/lib/d1", () => ({
+  getD1: () => getD1Mock(),
+  getBadgeRateLimiter: () => getRateLimiterMock(),
+}));
 
 import { GET } from "./route";
 
@@ -14,6 +19,10 @@ function req(url: string) {
 describe("GET /api/badge", () => {
   beforeEach(() => {
     getD1Mock.mockReset();
+    limitMock.mockReset().mockResolvedValue({ success: true });
+    getRateLimiterMock
+      .mockReset()
+      .mockResolvedValue({ limit: (o: { key: string }) => limitMock(o) });
   });
 
   it("always returns an SVG image", async () => {
@@ -47,6 +56,32 @@ describe("GET /api/badge", () => {
     expect(body).toContain("repo views");
     expect(body).toContain("1.2k");
     expect(bind).toHaveBeenCalledWith("o", "r");
+  });
+
+  it("sets a long-lived, stale-while-revalidate Cache-Control and an ETag", async () => {
+    getD1Mock.mockResolvedValue(null);
+    const res = await GET(req("http://x/api/badge?owner=o&repo=r"));
+    expect(res.headers.get("Cache-Control")).toContain("stale-while-revalidate");
+    expect(res.headers.get("ETag")).toBeTruthy();
+  });
+
+  it("returns 304 when the If-None-Match ETag matches", async () => {
+    getD1Mock.mockResolvedValue(null);
+    const first = await GET(req("http://x/api/badge?owner=o&repo=r"));
+    const etag = first.headers.get("ETag")!;
+    const conditional = new NextRequest(
+      new Request("http://x/api/badge?owner=o&repo=r", { headers: { "If-None-Match": etag } })
+    );
+    const res = await GET(conditional);
+    expect(res.status).toBe(304);
+  });
+
+  it("renders a 'rate limited' badge (not a 429) when the limiter rejects", async () => {
+    limitMock.mockResolvedValue({ success: false });
+    const res = await GET(req("http://x/api/badge?owner=o&repo=r"));
+    expect(res.status).toBe(200);
+    const body = await res.text();
+    expect(body).toContain("rate limited");
   });
 
   it("renders 'error' when the query throws", async () => {

@@ -24,6 +24,20 @@
       "database_id": "00000000-0000-0000-0000-000000000000"
     }
   ],
+  // Cloudflare-native rate limiting for the public, unauthenticated /api/badge
+  // endpoint — the viral README badge that anyone can hammer. Free, runs at the
+  // edge, no external service. Keyed per-IP in the route handler.
+  // Requires Wrangler >= 4.36. period must be 10 or 60.
+  "ratelimits": [
+    {
+      "name": "BADGE_RATE_LIMITER",
+      "namespace_id": "1001",
+      "simple": {
+        "limit": 60,
+        "period": 60
+      }
+    }
+  ],
   // The daily Cron Trigger + snapshot logic lives in its own Worker so it can run
   // independently of request traffic — see wrangler.snapshot.jsonc + worker/snapshot.ts.
   "observability": {
