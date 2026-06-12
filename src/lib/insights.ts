@@ -1,29 +1,17 @@
 // SPDX-License-Identifier: MIT
+import { z } from "zod";
 
 /**
  * Shapes for the aggregated traffic payload that the "Summarize my traffic"
  * panel sends to the AI insights endpoint, plus helpers to build and validate it.
  *
+ * Validation uses Zod v4 (replacing the previous hand-rolled checks) while keeping
+ * the same lenient, normalizing contract: unknown/malformed fields are coerced to
+ * safe defaults rather than rejected, and the only hard failures are a non-object
+ * body or a payload with no traffic at all.
+ *
  * Kept framework-free so it can be unit-tested without Next.js / the Anthropic SDK.
  */
-
-export interface DailyPoint {
-  date: string;
-  views: number;
-  uniques: number;
-}
-
-export interface AggregatedTrafficPayload {
-  repoCount: number;
-  totalViews: number;
-  totalUniques: number;
-  totalClones: number;
-  totalCloneUniques: number;
-  totalStars: number;
-  topReferrers: Array<{ referrer: string; count: number; uniques: number }>;
-  topPaths: Array<{ path: string; count: number; uniques: number }>;
-  daily: DailyPoint[];
-}
 
 export class InvalidInsightsPayloadError extends Error {
   readonly status = 400 as const;
@@ -33,7 +21,55 @@ export class InvalidInsightsPayloadError extends Error {
   }
 }
 
-const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+/** A finite number, or 0 for anything else (strings, null, NaN, Infinity, missing). */
+const safeNumber = z.preprocess(
+  (v) => (typeof v === "number" && Number.isFinite(v) ? v : 0),
+  z.number()
+);
+
+const dailyPointSchema = z.object({
+  date: z.preprocess((v) => String(v ?? ""), z.string()),
+  views: safeNumber,
+  uniques: safeNumber,
+});
+
+const referrerSchema = z.object({
+  referrer: z.preprocess((v) => (v == null ? "Direct" : String(v)), z.string()),
+  count: safeNumber,
+  uniques: safeNumber,
+});
+
+const pathSchema = z.object({
+  path: z.preprocess((v) => String(v ?? ""), z.string()),
+  count: safeNumber,
+  uniques: safeNumber,
+});
+
+/** Drop non-object array entries before parsing, then cap the list length. */
+const objectArray = <T extends z.ZodTypeAny>(item: T, cap?: number) =>
+  z.preprocess(
+    (v) => {
+      if (!Array.isArray(v)) return [];
+      const objects = v.filter((e) => !!e && typeof e === "object");
+      return cap ? objects.slice(0, cap) : objects;
+    },
+    z.array(item)
+  );
+
+const payloadSchema = z.object({
+  repoCount: safeNumber,
+  totalViews: safeNumber,
+  totalUniques: safeNumber,
+  totalClones: safeNumber,
+  totalCloneUniques: safeNumber,
+  totalStars: safeNumber,
+  topReferrers: objectArray(referrerSchema, 10),
+  topPaths: objectArray(pathSchema, 10),
+  daily: objectArray(dailyPointSchema),
+});
+
+export type DailyPoint = z.infer<typeof dailyPointSchema>;
+export type AggregatedTrafficPayload = z.infer<typeof payloadSchema>;
 
 /**
  * Validate and normalize an untrusted request body into an AggregatedTrafficPayload.
@@ -43,57 +79,8 @@ export function parseTrafficPayload(body: unknown): AggregatedTrafficPayload {
   if (!body || typeof body !== "object") {
     throw new InvalidInsightsPayloadError("Request body must be a traffic summary object.");
   }
-  const b = body as Record<string, unknown>;
 
-  const num = (key: string): number => (isNum(b[key]) ? (b[key] as number) : 0);
-
-  const daily: DailyPoint[] = Array.isArray(b.daily)
-    ? (b.daily as unknown[])
-        .filter((d): d is Record<string, unknown> => !!d && typeof d === "object")
-        .map((d) => ({
-          date: String((d as Record<string, unknown>).date ?? ""),
-          views: isNum((d as Record<string, unknown>).views)
-            ? ((d as Record<string, unknown>).views as number)
-            : 0,
-          uniques: isNum((d as Record<string, unknown>).uniques)
-            ? ((d as Record<string, unknown>).uniques as number)
-            : 0,
-        }))
-    : [];
-
-  const referrers = Array.isArray(b.topReferrers)
-    ? (b.topReferrers as unknown[])
-        .filter((r): r is Record<string, unknown> => !!r && typeof r === "object")
-        .slice(0, 10)
-        .map((r) => ({
-          referrer: String(r.referrer ?? "Direct"),
-          count: isNum(r.count) ? (r.count as number) : 0,
-          uniques: isNum(r.uniques) ? (r.uniques as number) : 0,
-        }))
-    : [];
-
-  const paths = Array.isArray(b.topPaths)
-    ? (b.topPaths as unknown[])
-        .filter((p): p is Record<string, unknown> => !!p && typeof p === "object")
-        .slice(0, 10)
-        .map((p) => ({
-          path: String(p.path ?? ""),
-          count: isNum(p.count) ? (p.count as number) : 0,
-          uniques: isNum(p.uniques) ? (p.uniques as number) : 0,
-        }))
-    : [];
-
-  const payload: AggregatedTrafficPayload = {
-    repoCount: num("repoCount"),
-    totalViews: num("totalViews"),
-    totalUniques: num("totalUniques"),
-    totalClones: num("totalClones"),
-    totalCloneUniques: num("totalCloneUniques"),
-    totalStars: num("totalStars"),
-    topReferrers: referrers,
-    topPaths: paths,
-    daily,
-  };
+  const payload = payloadSchema.parse(body);
 
   if (payload.totalViews === 0 && payload.totalClones === 0 && payload.daily.length === 0) {
     throw new InvalidInsightsPayloadError(
