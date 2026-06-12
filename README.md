@@ -3,7 +3,7 @@
 
 # GitHub Traffic Analytics
 
-Track your GitHub repository traffic — and **keep history past GitHub's 14-day limit**.
+### Self-hosted, open-source GitHub repo analytics — keep your traffic, clones, and stars forever (GitHub deletes them after 14 days). A free Repobeats / star-history alternative.
 
 <!-- Banner committed under assets/ — generate per BANNER.md (dark-tech charts), then uncomment. -->
 <!-- ![GitHub Traffic Analytics](assets/hero.png) -->
@@ -15,11 +15,42 @@ Track your GitHub repository traffic — and **keep history past GitHub's 14-day
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/)
 [![pnpm](https://img.shields.io/badge/pnpm-10-f69220?logo=pnpm)](https://pnpm.io/)
 
-[**Live demo**](https://github-traffic-analytics.pages.dev) · [Docs](docs/) · [Deploy your own](#deploy-your-own-cloudflare)
+[**▶ Live demo**](https://github-traffic-analytics.pages.dev) · [Docs](docs/) · [Deploy your own](#deploy-your-own-cloudflare) · [⭐ Star this repo](https://github.com/aliammari1/github-traffic-analytics)
 
+[![▶ Live dashboard demo](https://img.shields.io/badge/▶_Live_dashboard-demo-2ea44f?style=for-the-badge)](https://github-traffic-analytics.pages.dev)
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/aliammari1/github-traffic-analytics)
+[![⭐ Star](https://img.shields.io/github/stars/aliammari1/github-traffic-analytics?style=for-the-badge&logo=github&label=Star&color=yellow)](https://github.com/aliammari1/github-traffic-analytics)
 
 </div>
+
+---
+
+## ⚡ Add a live traffic badge to your README
+
+The fastest way to try it: once your instance is deployed, drop a **live traffic
+badge** into any repo's README. It renders total views since you started tracking
+— the number GitHub throws away after 14 days — and links back to your dashboard:
+
+```md
+[![Repo traffic](https://YOUR-APP.pages.dev/api/badge?owner=you&repo=your-repo)](https://YOUR-APP.pages.dev)
+```
+
+The `/api/badge` endpoint is public, edge-cached (Cache-Control + ETag) and
+Cloudflare rate-limited, so it's safe to embed anywhere. A standalone
+**"persist traffic → badge + JSON" GitHub Action** (so you don't even need to
+host the app) is being extracted as **Wave 2** — ⭐ to follow along.
+
+## GitHub Traffic Analytics vs the alternatives
+
+| | **GitHub Traffic Analytics** | GitHub's built-in Insights | Repobeats | star-history |
+| --- | :---: | :---: | :---: | :---: |
+| Keeps traffic/clones past 14 days | ✅ forever | ❌ 14-day window | ❌ image only | n/a |
+| Self-hosted / own your data | ✅ | n/a | ❌ hosted SaaS | ❌ hosted |
+| Price | **$0** (CF free tier) | free | free/paid tiers | free |
+| Embeddable README badge | ✅ live SVG | ❌ | ✅ | ✅ (stars only) |
+| Star history | ✅ | ❌ | ➖ | ✅ |
+| AI traffic summary | ✅ | ❌ | ❌ | ❌ |
+| Open source (MIT) | ✅ | ❌ | ❌ | ✅ |
 
 ---
 
@@ -108,16 +139,11 @@ CI deploy is gated on `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` and the
 
 ## Show your traffic off (embeddable badge)
 
-The viral loop: drop a live traffic badge into **any** README and it links back
-here. Once your app is deployed, embed your own repo's accumulated views:
-
-```md
-[![Repo traffic](https://YOUR-APP.pages.dev/api/badge?owner=you&repo=your-repo)](https://YOUR-APP.pages.dev)
-```
-
-The badge renders a Shields-style SVG of total views since you started tracking —
-the number GitHub throws away after 14 days. See
-[`docs/`](docs/) → **Features → Traffic badge** for the endpoint contract.
+See [**⚡ Add a live traffic badge to your README**](#-add-a-live-traffic-badge-to-your-readme)
+above for the snippet. The badge renders a Shields-style SVG of total views since
+you started tracking — the number GitHub throws away after 14 days — and is
+edge-cached + rate-limited. Endpoint contract: [`docs/`](docs/) → **Features →
+Traffic badge**. A no-host **GitHub Action** version is coming in Wave 2.
 
 ## How I beat GitHub's 14-day limit
 
@@ -144,6 +170,16 @@ Architecture, Deployment). Build locally with `cd docs && pnpm install && pnpm d
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). PR titles follow
 [Conventional Commits](https://www.conventionalcommits.org/) (enforced in CI).
+
+## Related projects
+
+Part of a wider open-source toolkit by [@aliammari1](https://github.com/aliammari1):
+
+- [**awesome-ai-tools**](https://github.com/aliammari1/awesome-ai-tools) — a curated, weekly-updated index of AI tools.
+- [**JobPrep**](https://github.com/aliammari1/JobPrep) — open-source, BYOK AI interview-prep platform (Final Round AI alternative).
+- [**Leetcode_problems**](https://github.com/aliammari1/Leetcode_problems) — solutions including real wrong/TLE submissions.
+
+⭐ If this saved your traffic history, a star helps others find it.
 
 ## License
 
