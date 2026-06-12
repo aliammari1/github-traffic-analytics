@@ -19,9 +19,22 @@ const payload: AggregatedTrafficPayload = {
 };
 
 describe("InsightsPanel", () => {
-  it("renders the AI summary after clicking the button", async () => {
+  it("renders the streamed AI summary after clicking the button", async () => {
     server.use(
-      http.post("/api/insights", () => HttpResponse.json({ summary: "Traffic is trending up." }))
+      http.post("/api/insights", () => {
+        const encoder = new TextEncoder();
+        const stream = new ReadableStream({
+          start(controller) {
+            for (const chunk of ["Traffic ", "is trending ", "up."]) {
+              controller.enqueue(encoder.encode(chunk));
+            }
+            controller.close();
+          },
+        });
+        return new HttpResponse(stream, {
+          headers: { "Content-Type": "text/plain; charset=utf-8" },
+        });
+      })
     );
     const user = userEvent.setup();
 

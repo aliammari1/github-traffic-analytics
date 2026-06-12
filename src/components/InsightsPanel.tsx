@@ -31,11 +31,30 @@ export default function InsightsPanel({ payload }: InsightsPanelProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const data = await response.json();
+
+      // Errors are returned as JSON `{ error }`; success is a text/plain stream.
       if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
         throw new Error(data.error || "Failed to generate insights");
       }
-      setSummary(data.summary);
+
+      if (!response.body) {
+        // No streamable body (e.g. test/JSON fallback) — read it whole.
+        const text = await response.text();
+        setSummary(text);
+        return;
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulated = "";
+      setSummary("");
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        accumulated += decoder.decode(value, { stream: true });
+        setSummary(accumulated);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
