@@ -30,8 +30,9 @@ jobs:
           node-version: 22
       - name: Build Nextra site
         working-directory: docs
+        # --ignore-workspace: the docs site is a standalone project nested in the repo.
         run: |
-          pnpm install --no-frozen-lockfile
+          pnpm install --ignore-workspace --no-frozen-lockfile
           pnpm build
       - name: Deploy to Cloudflare Pages
         if: ${{ github.event_name == 'push' && vars.ENABLE_CF_DEPLOY == 'true' }}
