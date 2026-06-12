@@ -10,4 +10,5 @@ export default withNextra({
   // Static export so the docs deploy to Cloudflare Pages without a Node runtime.
   output: "export",
   images: { unoptimized: true },
+  outputFileTracingRoot: import.meta.dirname,
 });
