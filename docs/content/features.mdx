@@ -26,3 +26,22 @@ upserts one row per day/metric into a **D1** database. The dashboard's
 
 - **Opt in:** the "Track this repo" button stores your repo + token in D1.
 - **Read history:** `GET /api/snapshots?owner=…&repo=…` returns merged daily history.
+
+## Traffic badge (the viral loop)
+
+Every tracked repo gets a public, embeddable SVG badge of its **total accumulated
+views** — the number GitHub discards after 14 days. Drop it into any README and it
+links back to your deployment:
+
+```md
+[![Repo traffic](https://YOUR-APP.pages.dev/api/badge?owner=you&repo=your-repo)](https://YOUR-APP.pages.dev)
+```
+
+**Endpoint:** `GET /api/badge?owner=<o>&repo=<r>`
+
+- Returns `image/svg+xml` (a Shields-style pill, dark label + electric-cyan value).
+- **Public & unauthenticated** — it exposes only a single aggregate view count for a
+  repo whose owner opted into tracking; no per-user or private data is revealed.
+- **Never 404s:** returns a graceful `no data` / `error` badge so the image always
+  renders, even before the repo has snapshots or off the Cloudflare deployment.
+- Cached at the edge for one hour (snapshots change at most once a day).

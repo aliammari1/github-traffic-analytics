@@ -25,10 +25,33 @@ and abstract line/area charts as the visual motif.
   Analytics**. Tagline: *Beat GitHub's 14-day traffic window.*
 - **Logo cue:** a bar/line-chart glyph inside a rounded square.
 
-## How to generate (deferred)
+## The one prompt (copy-paste into your image generator)
 
-Image generation is intentionally **not** run here. To produce these, use the
-`brandkit` skill for the identity board + 1280×640 social card, and
-`imagegen-frontend-web` for the wide README hero, then commit the PNGs to
-`assets/` (committed locally so they never rate-limit or 404). The README links
-these paths as a TODO until the images exist.
+> A dark-tech hero graphic for a developer analytics product called **"GitHub
+> Traffic Analytics."** Near-black charcoal canvas (`#0a0a0a`) with a faint
+> technical grid. Foreground: several **layered, semi-transparent line and area
+> charts** trending up-and-to-the-right, the topmost being a single bright
+> **electric-cyan (`#06b6d4`) growth line** with a soft glow and a glowing node at
+> its peak. Off-white (`#fafafa`) secondary lines behind it. A subtle, elegant
+> **"14 → ∞"** motif worked into the chart axis, nodding to data that outlives
+> GitHub's 14-day window. Small rounded-square logo glyph containing a minimal
+> bar/line chart, top-left. Wordmark **"GitHub Traffic Analytics"** in a geometric
+> sans (Inter), tight tracking, with the tagline *"Beat GitHub's 14-day traffic
+> window."* beneath it. Cinematic, premium, lots of negative space, no UI chrome,
+> no photoreal screenshots. Flat vector-meets-glow aesthetic.
+
+Render this prompt at the three target sizes below and commit the PNGs to
+`assets/`. Keep one consistent composition so the hero, social card, and OG image
+read as the same identity.
+
+| Output | Aspect | Save as |
+| --- | --- | --- |
+| Wide README hero | 1280 × 400 | `assets/hero.png` |
+| Social / OG card | 1280 × 640 | `assets/social-preview.png` |
+| Open Graph (optional) | 1200 × 630 | `assets/og.png` |
+
+Image generation is intentionally **not** run in this pass. Generate with the
+`brandkit` / `imagegen-frontend-web` skills, commit locally (so the images never
+rate-limit or 404), then uncomment the `assets/hero.png` line in `README.md`.
+Also copy `og.png` to `public/og.png` and uncomment the `openGraph.images` line in
+`src/app/layout.tsx` so the metadata card resolves at a real URL.

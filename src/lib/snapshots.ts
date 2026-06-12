@@ -102,6 +102,27 @@ export async function getHistory(
 }
 
 /**
+ * Sum total accumulated views (across all tracked owners) for a public repo —
+ * the figure the embeddable README badge renders. Counts only the `views` metric.
+ * Returns 0 when the repo has no snapshots yet.
+ */
+export async function getTotalViews(
+  db: D1Database,
+  args: { repoOwner: string; repoName: string }
+): Promise<number> {
+  const { repoOwner, repoName } = args;
+  const { results } = await db
+    .prepare(
+      `SELECT COALESCE(SUM(count), 0) AS total
+         FROM traffic_snapshots
+        WHERE repo_owner = ? AND repo_name = ? AND metric = 'views'`
+    )
+    .bind(repoOwner, repoName)
+    .all<{ total: number }>();
+  return Number(results[0]?.total ?? 0);
+}
+
+/**
  * Pivot raw snapshot rows into per-day records merging views and clones, which is
  * the shape the historical UI chart consumes.
  */

@@ -7,6 +7,14 @@ title: Deployment
 The app deploys to **Cloudflare Pages** via `@opennextjs/cloudflare`, with **D1**
 for snapshots and a separate **Cron Worker** for daily capture.
 
+## One-click deploy
+
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/aliammari1/github-traffic-analytics)
+
+The button clones the repo into your Cloudflare account and wires up the Worker.
+You still complete the D1 + secrets steps below (a database can't be provisioned by
+the button alone). For full control, follow the manual steps.
+
 ## 1. Create the D1 database
 
 ```bash
