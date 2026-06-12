@@ -17,3 +17,23 @@ export async function getD1(): Promise<D1Database | null> {
     return null;
   }
 }
+
+/** Cloudflare-native rate limiter binding (see `ratelimits` in wrangler.jsonc). */
+export interface RateLimiter {
+  limit(options: { key: string }): Promise<{ success: boolean }>;
+}
+
+/**
+ * Resolve the `BADGE_RATE_LIMITER` binding at runtime on Cloudflare. Returns null
+ * off-Cloudflare (local dev, CI, unit tests) so the public badge route simply
+ * skips rate limiting there instead of crashing.
+ */
+export async function getBadgeRateLimiter(): Promise<RateLimiter | null> {
+  try {
+    const mod = await import("@opennextjs/cloudflare");
+    const { env } = mod.getCloudflareContext();
+    return (env as { BADGE_RATE_LIMITER?: RateLimiter }).BADGE_RATE_LIMITER ?? null;
+  } catch {
+    return null;
+  }
+}
