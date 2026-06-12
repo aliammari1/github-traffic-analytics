@@ -1,0 +1,43 @@
+---
+title: Architecture
+---
+
+# Architecture
+
+```
+GitHub OAuth ──► NextAuth (session + access token)
+                      │
+   Browser ──► Next.js App (Cloudflare Pages via @opennextjs/cloudflare)
+                      │
+        ┌─────────────┼─────────────────────────────┐
+        ▼             ▼                             ▼
+  /api/repositories  /api/traffic               /api/insights
+  /api/snapshots     (Octokit → GitHub)         (Anthropic Messages API,
+  /api/track              │                       claude-haiku-4-5)
+        │                 │
+        ▼                 │
+     D1 (traffic_snapshots, tracked_repos)
+        ▲
+        │ daily upsert
+  Cron Worker (worker/snapshot.ts, Cron Trigger 06:00 UTC)
+```
+
+## Key modules
+
+| Path | Responsibility |
+| --- | --- |
+| `src/lib/github.ts` | Octokit wrapper; throws a typed `TrafficAccessError` on 403 (English messages) |
+| `src/lib/insights.ts` | Validate/aggregate the traffic payload and build the AI prompt |
+| `src/lib/snapshots.ts` | D1 upsert + history query helpers (framework-free, unit-tested) |
+| `src/lib/d1.ts` | Resolves the D1 binding at runtime (null off-Cloudflare) |
+| `worker/snapshot.ts` | The daily Cron Worker |
+
+## Engineering decisions
+
+- **Cloudflare over Vercel:** Pages + D1 + Cron Triggers are a single free-tier
+  platform that natively supports the snapshot feature (the headline value-add).
+- **pnpm over Bun:** reproducible lockfile + first-class `pnpm/action-setup` in CI.
+- **ESLint CLI over `next lint`:** `next lint` was removed in Next 16.
+- **Typed error over string matching:** the 403 path uses `TrafficAccessError`
+  rather than matching a localized message, so the original French-vs-English bug
+  can't recur.

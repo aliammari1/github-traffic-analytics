@@ -1,0 +1,46 @@
+---
+title: Deployment
+---
+
+# Deployment (Cloudflare)
+
+The app deploys to **Cloudflare Pages** via `@opennextjs/cloudflare`, with **D1**
+for snapshots and a separate **Cron Worker** for daily capture.
+
+## 1. Create the D1 database
+
+```bash
+wrangler d1 create traffic_analytics
+# paste the returned database_id into wrangler.jsonc and wrangler.snapshot.jsonc
+wrangler d1 execute traffic_analytics --remote --file db/schema.sql
+```
+
+## 2. Build & deploy the app
+
+```bash
+pnpm cf:build      # opennextjs-cloudflare build
+pnpm cf:deploy     # opennextjs-cloudflare deploy
+```
+
+## 3. Deploy the snapshot cron worker
+
+```bash
+wrangler deploy --config wrangler.snapshot.jsonc
+```
+
+It runs daily at 06:00 UTC (`triggers.crons`).
+
+## CI deploy (gated)
+
+`.github/workflows/deploy.yml` deploys on push to `main`, but only when the
+repository variable `ENABLE_CF_DEPLOY` is `true` and these secrets are set:
+
+| Secret | |
+| --- | --- |
+| `CLOUDFLARE_API_TOKEN` | Cloudflare API token |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare account id |
+| `NEXTAUTH_SECRET`, `NEXTAUTH_URL` | NextAuth |
+| `GH_OAUTH_CLIENT_ID`, `GH_OAUTH_CLIENT_SECRET` | GitHub OAuth |
+| `ANTHROPIC_API_KEY` | AI insights |
+
+Without them the deploy job is skipped — forks and CI never attempt a deploy.
