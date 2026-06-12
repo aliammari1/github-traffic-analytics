@@ -5,14 +5,26 @@ import { NextRequest } from "next/server";
 const authMock = vi.fn();
 vi.mock("@/lib/auth", () => ({ auth: () => authMock() }));
 
-const createMessage = vi.fn();
+const streamMessage = vi.fn();
 vi.mock("@anthropic-ai/sdk", () => ({
   default: vi.fn(() => ({
-    messages: { create: (...a: unknown[]) => createMessage(...a) },
+    messages: { stream: (...a: unknown[]) => streamMessage(...a) },
   })),
 }));
 
 import { POST } from "./route";
+
+/** Build a fake Anthropic streaming handle whose textStream yields `chunks`. */
+function fakeStream(chunks: string[]) {
+  return {
+    on() {
+      return this;
+    },
+    textStream: (async function* () {
+      for (const c of chunks) yield c;
+    })(),
+  };
+}
 
 const validPayload = {
   repoCount: 2,
@@ -65,30 +77,40 @@ describe("POST /api/insights", () => {
     expect(res.status).toBe(400);
   });
 
-  it("returns the AI summary on success and uses claude-haiku-4-5", async () => {
+  it("streams the AI summary on success and uses claude-haiku-4-5", async () => {
     authMock.mockResolvedValue({ accessToken: "t" });
-    createMessage.mockResolvedValue({
-      content: [{ type: "text", text: "Your traffic is up." }],
-    });
+    streamMessage.mockReturnValue(fakeStream(["Your ", "traffic ", "is up."]));
     const res = await POST(postReq(validPayload));
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ summary: "Your traffic is up." });
-    expect(createMessage).toHaveBeenCalledWith(
+    expect(res.headers.get("Content-Type")).toContain("text/plain");
+    expect(await res.text()).toBe("Your traffic is up.");
+    expect(streamMessage).toHaveBeenCalledWith(
       expect.objectContaining({ model: "claude-haiku-4-5" })
     );
   });
 
-  it("returns 502 when the model call fails", async () => {
+  it("returns 502 when the model call fails to start", async () => {
     authMock.mockResolvedValue({ accessToken: "t" });
-    createMessage.mockRejectedValue(new Error("upstream"));
+    streamMessage.mockImplementation(() => {
+      throw new Error("upstream");
+    });
     const res = await POST(postReq(validPayload));
     expect(res.status).toBe(502);
   });
 
-  it("returns 502 when the model returns no text", async () => {
+  it("ends the stream gracefully if it errors mid-flight", async () => {
     authMock.mockResolvedValue({ accessToken: "t" });
-    createMessage.mockResolvedValue({ content: [] });
+    streamMessage.mockReturnValue({
+      on() {
+        return this;
+      },
+      // eslint-disable-next-line require-yield
+      textStream: (async function* () {
+        throw new Error("mid-stream");
+      })(),
+    });
     const res = await POST(postReq(validPayload));
-    expect(res.status).toBe(502);
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe("");
   });
 });

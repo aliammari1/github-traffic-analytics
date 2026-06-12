@@ -13,14 +13,15 @@ import { NextRequest, NextResponse } from "next/server";
 /**
  * POST /api/insights
  *
- * Accepts an aggregated traffic summary and returns an AI-generated "Summarize my
+ * Accepts an aggregated traffic summary and STREAMS an AI-generated "Summarize my
  * traffic" briefing produced by the Anthropic Messages API (model claude-haiku-4-5).
  *
- * @returns JSON `{ summary: string }` on success, or `{ error: string }` with:
+ * On success it returns a `text/plain` stream of the briefing token-by-token so
+ * the UI can render it as it arrives. Error cases still return JSON `{ error }`:
  *   - 401 when the session lacks an access token,
  *   - 400 when the body is not a usable traffic summary,
  *   - 503 when ANTHROPIC_API_KEY is not configured,
- *   - 502 when the upstream model call fails.
+ *   - 502 when the upstream model call fails before any token is emitted.
  */
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -47,26 +48,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
 
+  let stream;
   try {
     const client = new Anthropic({ apiKey });
-    const message = await client.messages.create({
+    stream = client.messages.stream({
       model: INSIGHTS_MODEL,
       max_tokens: 1024,
       system: INSIGHTS_SYSTEM_PROMPT,
       messages: [{ role: "user", content: buildInsightsPrompt(payload) }],
     });
-
-    const summary = message.content
-      .filter((block): block is Anthropic.TextBlock => block.type === "text")
-      .map((block) => block.text)
-      .join("\n")
-      .trim();
-
-    if (!summary) {
-      return NextResponse.json({ error: "The model returned an empty response." }, { status: 502 });
-    }
-
-    return NextResponse.json({ summary });
   } catch (error: unknown) {
     console.error("Error generating traffic insights:", error);
     return NextResponse.json(
@@ -74,4 +64,28 @@ export async function POST(request: NextRequest) {
       { status: 502 }
     );
   }
+
+  const encoder = new TextEncoder();
+  const body = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      try {
+        for await (const text of stream.on("error", () => {}).textStream) {
+          controller.enqueue(encoder.encode(text));
+        }
+        controller.close();
+      } catch (error: unknown) {
+        // The model failed mid-stream; the client renders whatever already arrived.
+        console.error("Error streaming traffic insights:", error);
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(body, {
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      "Cache-Control": "no-store",
+      "X-Accel-Buffering": "no",
+    },
+  });
 }
