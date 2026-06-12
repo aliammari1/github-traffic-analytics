@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: MIT
+name: Bug report
+description: Report a problem with GitHub Traffic Analytics
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug, including what you expected.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Sign in
+        2. Select a repository
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      description: Browser, OS, and whether running locally or on Cloudflare.
+    validations:
+      required: false
