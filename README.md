@@ -5,7 +5,7 @@
 
 Track your GitHub repository traffic — and **keep history past GitHub's 14-day limit**.
 
-<!-- Banner is committed under assets/ once generated — see BANNER.md (dark-tech charts). TODO -->
+<!-- Banner committed under assets/ — generate per BANNER.md (dark-tech charts), then uncomment. -->
 <!-- ![GitHub Traffic Analytics](assets/hero.png) -->
 
 [![CI](https://github.com/aliammari1/github-traffic-analytics/actions/workflows/ci.yml/badge.svg)](https://github.com/aliammari1/github-traffic-analytics/actions/workflows/ci.yml)
@@ -14,6 +14,10 @@ Track your GitHub repository traffic — and **keep history past GitHub's 14-day
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/)
 [![pnpm](https://img.shields.io/badge/pnpm-10-f69220?logo=pnpm)](https://pnpm.io/)
+
+[**Live demo**](https://github-traffic-analytics.pages.dev) · [Docs](docs/) · [Deploy your own](#deploy-your-own-cloudflare)
+
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/aliammari1/github-traffic-analytics)
 
 </div>
 
@@ -87,13 +91,41 @@ Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS 4 · shadcn/ui
 NextAuth · Octokit · Recharts · Anthropic SDK · Vitest · Playwright + MSW ·
 Cloudflare Pages + D1 + Cron Triggers.
 
-## Deployment (Cloudflare)
+## Deploy your own (Cloudflare)
 
 Hosted on **Cloudflare's free tier**: Pages (Next via `@opennextjs/cloudflare`),
 **D1** for snapshots, and a daily **Cron Worker** (`worker/snapshot.ts`).
-See [`docs/`](docs/) (Nextra) → **Deployment** for the full guide. CI deploy is
-gated on `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` and the
+
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/aliammari1/github-traffic-analytics)
+
+One click clones the repo to your account and provisions the Worker; you then
+create the D1 database (`wrangler d1 create traffic_analytics`) and set the
+OAuth/Anthropic secrets. The full step-by-step (D1 schema, cron worker, gated CI
+deploy) lives in [`docs/`](docs/) (Nextra) → **Deployment**.
+
+CI deploy is gated on `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` and the
 `ENABLE_CF_DEPLOY` repo variable — forks and this repo never auto-deploy.
+
+## Show your traffic off (embeddable badge)
+
+The viral loop: drop a live traffic badge into **any** README and it links back
+here. Once your app is deployed, embed your own repo's accumulated views:
+
+```md
+[![Repo traffic](https://YOUR-APP.pages.dev/api/badge?owner=you&repo=your-repo)](https://YOUR-APP.pages.dev)
+```
+
+The badge renders a Shields-style SVG of total views since you started tracking —
+the number GitHub throws away after 14 days. See
+[`docs/`](docs/) → **Features → Traffic badge** for the endpoint contract.
+
+## How I beat GitHub's 14-day limit
+
+GitHub's traffic API is a sliding 14-day window — older data is gone forever.
+The fix is unglamorous and reliable: a **daily Cloudflare Cron Worker** snapshots
+each tracked repo's views/clones into **D1**, so history accumulates indefinitely
+from day one of tracking. Write-up:
+[*How I beat GitHub's 14-day traffic limit*](docs/) (Architecture → Daily snapshots).
 
 ## Engineering decisions
 
