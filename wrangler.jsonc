@@ -1,0 +1,46 @@
+{
+  // SPDX-License-Identifier: MIT
+  // Cloudflare configuration for the Next.js app (via @opennextjs/cloudflare)
+  // plus the daily-snapshot Cron Worker and its D1 binding.
+  //
+  // This repo is NOT deployed from CI in this environment (no Cloudflare creds).
+  // The deploy workflow (.github/workflows/deploy.yml) is gated on the
+  // CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID secrets.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "github-traffic-analytics",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-06-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  // D1 database storing daily traffic snapshots (beats GitHub's 14-day window).
+  // Create with: wrangler d1 create traffic_analytics  (then paste the id below)
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "traffic_analytics",
+      "database_id": "00000000-0000-0000-0000-000000000000"
+    }
+  ],
+  // Cloudflare-native rate limiting for the public, unauthenticated /api/badge
+  // endpoint — the viral README badge that anyone can hammer. Free, runs at the
+  // edge, no external service. Keyed per-IP in the route handler.
+  // Requires Wrangler >= 4.36. period must be 10 or 60.
+  "ratelimits": [
+    {
+      "name": "BADGE_RATE_LIMITER",
+      "namespace_id": "1001",
+      "simple": {
+        "limit": 60,
+        "period": 60
+      }
+    }
+  ],
+  // The daily Cron Trigger + snapshot logic lives in its own Worker so it can run
+  // independently of request traffic — see wrangler.snapshot.jsonc + worker/snapshot.ts.
+  "observability": {
+    "enabled": true
+  }
+}

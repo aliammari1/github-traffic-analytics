@@ -1,8 +1,10 @@
+// SPDX-License-Identifier: MIT
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { Repository } from "@/lib/github";
 import { Button } from "@/components/ui/button";
+import HistoricalTraffic from "@/components/HistoricalTraffic";
 import { Eye, Download, ExternalLink, ArrowLeft, Star } from "lucide-react";
 import {
   LineChart,
@@ -279,6 +281,9 @@ export default function TrafficDashboard({ repository, onBack }: TrafficDashboar
           </ResponsiveContainer>
         </div>
       </div>
+
+      {/* Historical traffic (D1 snapshots, beyond the 14-day window) */}
+      <HistoricalTraffic owner={repository.owner.login} repo={repository.name} />
 
       {/* Tables */}
       <div className="grid gap-6 lg:grid-cols-2">

@@ -1,0 +1,25 @@
+{
+  // SPDX-License-Identifier: MIT
+  // Dedicated Cron Worker that snapshots GitHub traffic into D1 every day.
+  // Deploy with: wrangler deploy --config wrangler.snapshot.jsonc
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "github-traffic-analytics-snapshot",
+  "main": "worker/snapshot.ts",
+  "compatibility_date": "2026-06-01",
+  "compatibility_flags": ["nodejs_compat"],
+  // Runs daily at 06:00 UTC.
+  "triggers": {
+    "crons": ["0 6 * * *"]
+  },
+  // Same D1 database as the app reads from.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "traffic_analytics",
+      "database_id": "00000000-0000-0000-0000-000000000000"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
+}

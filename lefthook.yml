@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: MIT
+# Mirrors CI locally. Install with: pnpm dlx lefthook install
+pre-commit:
+  parallel: true
+  commands:
+    lint:
+      glob: "*.{ts,tsx,js,mjs}"
+      run: pnpm eslint {staged_files}
+    format:
+      glob: "*.{ts,tsx,json,css,md}"
+      run: pnpm prettier --check {staged_files}
+
+pre-push:
+  commands:
+    typecheck:
+      run: pnpm typecheck
+    test:
+      run: pnpm test

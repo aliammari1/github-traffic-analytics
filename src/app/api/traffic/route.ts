@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: MIT
 import { auth } from "@/lib/auth";
-import { GitHubService } from "@/lib/github";
+import { GitHubService, TrafficAccessError } from "@/lib/github";
 import { NextRequest, NextResponse } from "next/server";
 
 /**
@@ -13,7 +14,7 @@ import { NextRequest, NextResponse } from "next/server";
  *          On error returns `{ error: string }` with one of:
  *            - 401 when the session lacks an access token,
  *            - 400 when `owner` or `repo` query parameter is missing,
- *            - 403 when the underlying error message contains "Accès refusé",
+ *            - 403 when the user lacks push/admin access (TrafficAccessError),
  *            - 500 for other failures.
  */
 export async function GET(request: NextRequest) {
@@ -50,10 +51,11 @@ export async function GET(request: NextRequest) {
   } catch (error: unknown) {
     console.error("Error fetching traffic data:", error);
 
-    // Renvoyer le message d'erreur spécifique si disponible
+    // Surface a specific message/status when access was denied; otherwise 500.
+    if (error instanceof TrafficAccessError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     const errorMessage = error instanceof Error ? error.message : "Failed to fetch traffic data";
-    const statusCode = errorMessage.includes("Accès refusé") ? 403 : 500;
-
-    return NextResponse.json({ error: errorMessage }, { status: statusCode });
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
