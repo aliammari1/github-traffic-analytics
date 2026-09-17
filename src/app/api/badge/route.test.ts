@@ -4,7 +4,9 @@ import { NextRequest } from "next/server";
 
 const getD1Mock = vi.fn();
 const limitMock = vi.fn().mockResolvedValue({ success: true });
-const getRateLimiterMock = vi.fn().mockResolvedValue({ limit: (o: { key: string }) => limitMock(o) });
+const getRateLimiterMock = vi
+  .fn()
+  .mockResolvedValue({ limit: (o: { key: string }) => limitMock(o) });
 vi.mock("@/lib/d1", () => ({
   getD1: () => getD1Mock(),
   getBadgeRateLimiter: () => getRateLimiterMock(),
