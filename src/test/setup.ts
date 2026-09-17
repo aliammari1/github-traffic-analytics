@@ -17,11 +17,11 @@ beforeAll(() => {
     configurable: true,
     value: 400,
   });
-  global.ResizeObserver = class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  };
+  globalThis.ResizeObserver = vi.fn().mockImplementation(() => ({
+    observe: vi.fn(),
+    unobserve: vi.fn(),
+    disconnect: vi.fn(),
+  })) as unknown as typeof ResizeObserver;
 });
 
 afterEach(() => {
