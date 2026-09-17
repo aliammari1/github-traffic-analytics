@@ -16,19 +16,19 @@ const TEXT = "#ffffff";
 /** Escape the few characters that are unsafe inside SVG text/attributes. */
 function escapeXml(value: string): string {
   return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&apos;");
 }
 
 /** Compact human-readable count: 1234 -> "1.2k", 2_500_000 -> "2.5M". */
 export function formatCount(n: number): string {
   if (!Number.isFinite(n) || n < 0) return "0";
   if (n < 1000) return String(Math.trunc(n));
-  if (n < 1_000_000) return `${(n / 1000).toFixed(n < 10_000 ? 1 : 0)}k`.replace(".0", "");
-  return `${(n / 1_000_000).toFixed(1)}M`.replace(".0", "");
+  if (n < 1_000_000) return `${(n / 1000).toFixed(n < 10_000 ? 1 : 0)}k`.replaceAll(".0", "");
+  return `${(n / 1_000_000).toFixed(1)}M`.replaceAll(".0", "");
 }
 
 /** Approximate pixel width of a string in the 11px font Shields uses (~7px/char). */
