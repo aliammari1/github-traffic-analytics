@@ -1,0 +1,23 @@
+---
+title: Introduction
+---
+
+# GitHub Traffic Analytics
+
+A Next.js 16 dashboard for your GitHub repository traffic — views, clones,
+referrers, and popular paths — with two things GitHub itself doesn't give you:
+
+- **History beyond 14 days.** GitHub's traffic API only returns the last 14 days.
+  A daily Cloudflare Cron Worker writes snapshots to D1 so you keep the full timeline.
+- **AI insights.** A "Summarize my traffic" panel calls the Anthropic Messages API
+  (`claude-haiku-4-5`) over your aggregated traffic and returns an actionable briefing.
+
+> **Known limitation:** the live GitHub API window is 14 days. Historical data only
+> accumulates from the day you enable tracking on a repository.
+
+## Quick links
+
+- [Getting Started](/getting-started) — local setup and GitHub OAuth.
+- [Features](/features) — traffic dashboard, AI insights, daily snapshots.
+- [Architecture](/architecture) — how the app, D1, and the cron worker fit together.
+- [Deployment](/deployment) — Cloudflare Pages + D1 + Cron Triggers.

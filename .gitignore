@@ -33,9 +33,31 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
-# vercel
-.vercel
+# cloudflare / opennext
+.open-next/
+.wrangler/
+.dev.vars
+.dev.vars.*
+
+# playwright
+/playwright-report/
+/test-results/
+/blob-report/
+/playwright/.cache/
+
+# docs (nextra) build output
+/docs/.next/
+/docs/out/
+/docs/node_modules/
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Internal growth/marketing notes (not for public)
+GROWTH.md
+BANNER.md
+SUBMITTING_TO_AWESOME.md
+launch-kit.md
+star-strategy.md
+modernization-backlog.md

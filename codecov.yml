@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: MIT
+coverage:
+  status:
+    project:
+      default:
+        target: 80%
+        threshold: 1%
+    patch:
+      default:
+        target: 80%
+comment:
+  layout: "reach, diff, flags, files"
+  behavior: default
+  require_changes: false
+flags:
+  unit:
+    paths:
+      - src/
+ignore:
+  - "src/**/*.test.{ts,tsx}"
+  - "src/test/**"
+  - "src/types/**"
+  - "src/app/api/auth/**"
+  - "src/lib/auth.ts"
+  - "src/lib/d1.ts"
+  - "tests/**"

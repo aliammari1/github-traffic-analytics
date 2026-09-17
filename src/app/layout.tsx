@@ -17,6 +17,9 @@ export const metadata: Metadata = {
     title: "GitHub Traffic Analytics",
     description: "Track and analyze traffic for your GitHub repositories",
     type: "website",
+    // Social card — generated per BANNER.md and committed to public/og.png.
+    // Uncomment once the image exists (kept off until then so it never 404s):
+    // images: [{ url: "/og.png", width: 1200, height: 630, alt: "GitHub Traffic Analytics" }],
   },
 };
 
