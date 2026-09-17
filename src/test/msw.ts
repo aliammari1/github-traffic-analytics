@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 import { setupServer } from "msw/node";
-import { http, HttpResponse } from "msw";
+export { http, HttpResponse } from "msw";
 
 /**
  * Shared MSW server for component tests. Mocks the app's own API routes
@@ -8,8 +8,6 @@ import { http, HttpResponse } from "msw";
  * driven end-to-end without hitting GitHub or Anthropic.
  */
 export const server = setupServer();
-
-export { http, HttpResponse };
 
 export const sampleTraffic = {
   views: {
