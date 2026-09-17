@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
-import { fileURLToPath } from "url";
-import { dirname, resolve } from "path";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
