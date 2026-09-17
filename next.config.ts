@@ -6,13 +6,19 @@ import type { NextConfig } from "next";
 import "./src/env";
 
 /**
- * Content-Security-Policy. Kept reasonably strict for a dashboard that talks only
- * to its own origin (auth, traffic, insights) and loads GitHub avatars. Recharts
- * injects inline styles, so `style-src` allows 'unsafe-inline'; scripts do not.
+ * Content-Security-Policy. Next.js emits inline bootstrap scripts, so a static
+ * header must allow inline scripts unless the app adopts per-request nonces.
+ * Development also needs eval for the dev runtime/HMR. Recharts injects inline
+ * styles, so `style-src` allows inline styles as well.
  */
+const scriptSrc =
+  process.env.NODE_ENV === "development"
+    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+    : "script-src 'self' 'unsafe-inline'";
+
 const csp = [
   "default-src 'self'",
-  "script-src 'self'",
+  scriptSrc,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: https://*.githubusercontent.com",
   "font-src 'self' data:",
@@ -21,7 +27,7 @@ const csp = [
   "base-uri 'self'",
   "form-action 'self'",
   "object-src 'none'",
-  "upgrade-insecure-requests",
+  ...(process.env.NODE_ENV === "production" ? ["upgrade-insecure-requests"] : []),
 ].join("; ");
 
 const securityHeaders = [

@@ -14,15 +14,23 @@ vi.mock("@anthropic-ai/sdk", () => ({
 
 import { POST } from "./route";
 
-/** Build a fake Anthropic streaming handle whose textStream yields `chunks`. */
+function textDelta(text: string, index = 0) {
+  return {
+    type: "content_block_delta" as const,
+    index,
+    delta: { type: "text_delta" as const, text },
+  };
+}
+
+/** Build a fake Anthropic MessageStream yielding text delta events. */
 function fakeStream(chunks: string[]) {
   return {
-    on() {
-      return this;
+    async *[Symbol.asyncIterator]() {
+      for (const [index, text] of chunks.entries()) {
+        yield textDelta(text, index);
+      }
     },
-    textStream: (async function* () {
-      for (const c of chunks) yield c;
-    })(),
+    abort: vi.fn(),
   };
 }
 
@@ -101,16 +109,14 @@ describe("POST /api/insights", () => {
   it("ends the stream gracefully if it errors mid-flight", async () => {
     authMock.mockResolvedValue({ accessToken: "t" });
     streamMessage.mockReturnValue({
-      on() {
-        return this;
-      },
-      // eslint-disable-next-line require-yield
-      textStream: (async function* () {
+      async *[Symbol.asyncIterator]() {
+        yield textDelta("partial");
         throw new Error("mid-stream");
-      })(),
+      },
+      abort: vi.fn(),
     });
     const res = await POST(postReq(validPayload));
     expect(res.status).toBe(200);
-    expect(await res.text()).toBe("");
+    expect(await res.text()).toBe("partial");
   });
 });

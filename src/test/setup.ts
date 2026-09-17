@@ -4,6 +4,20 @@ import { afterAll, afterEach, beforeAll, vi } from "vitest";
 import { cleanup } from "@testing-library/react";
 import { server } from "./msw";
 
+class ResizeObserverMock implements ResizeObserver {
+  observe(): void {
+    return undefined;
+  }
+
+  unobserve(): void {
+    return undefined;
+  }
+
+  disconnect(): void {
+    return undefined;
+  }
+}
+
 beforeAll(() => {
   server.listen({ onUnhandledRequest: "error" });
 
@@ -17,11 +31,7 @@ beforeAll(() => {
     configurable: true,
     value: 400,
   });
-  globalThis.ResizeObserver = vi.fn().mockImplementation(() => ({
-    observe: vi.fn(),
-    unobserve: vi.fn(),
-    disconnect: vi.fn(),
-  })) as unknown as typeof ResizeObserver;
+  globalThis.ResizeObserver = ResizeObserverMock;
 });
 
 afterEach(() => {
