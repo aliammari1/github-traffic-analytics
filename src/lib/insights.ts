@@ -23,38 +23,42 @@ export class InvalidInsightsPayloadError extends Error {
 
 /** A finite number, or 0 for anything else (strings, null, NaN, Infinity, missing). */
 const safeNumber = z.preprocess(
-  (v) => (typeof v === "number" && Number.isFinite(v) ? v : 0),
+  (value) => (typeof value === "number" && Number.isFinite(value) ? value : 0),
   z.number()
 );
 
 const dailyPointSchema = z.object({
-  date: z.preprocess((v) => String(v ?? ""), z.string()),
+  date: z.preprocess((value) => String(value ?? ""), z.string()),
   views: safeNumber,
   uniques: safeNumber,
 });
 
 const referrerSchema = z.object({
-  referrer: z.preprocess((v) => (v == null ? "Direct" : String(v)), z.string()),
+  referrer: z.preprocess(
+    (value) => (value == null ? "Direct" : String(value)),
+    z.string()
+  ),
   count: safeNumber,
   uniques: safeNumber,
 });
 
 const pathSchema = z.object({
-  path: z.preprocess((v) => String(v ?? ""), z.string()),
+  path: z.preprocess((value) => String(value ?? ""), z.string()),
   count: safeNumber,
   uniques: safeNumber,
 });
 
 /** Drop non-object array entries before parsing, then cap the list length. */
-const objectArray = <T extends z.ZodTypeAny>(item: T, cap?: number) =>
-  z.preprocess(
-    (v) => {
-      if (!Array.isArray(v)) return [];
-      const objects = v.filter((e) => !!e && typeof e === "object");
+function objectArray<T extends z.ZodTypeAny>(item: T, cap?: number) {
+  return z.preprocess(
+    (value) => {
+      if (!Array.isArray(value)) return [];
+      const objects = value.filter((entry) => !!entry && typeof entry === "object");
       return cap ? objects.slice(0, cap) : objects;
     },
     z.array(item)
   );
+}
 
 const payloadSchema = z.object({
   repoCount: safeNumber,
@@ -81,8 +85,10 @@ export function parseTrafficPayload(body: unknown): AggregatedTrafficPayload {
   }
 
   const payload = payloadSchema.parse(body);
+  const hasNoTraffic =
+    payload.totalViews === 0 && payload.totalClones === 0 && payload.daily.length === 0;
 
-  if (payload.totalViews === 0 && payload.totalClones === 0 && payload.daily.length === 0) {
+  if (hasNoTraffic) {
     throw new InvalidInsightsPayloadError(
       "No traffic data to summarize. Open a repository with traffic first."
     );
@@ -96,28 +102,32 @@ export function parseTrafficPayload(body: unknown): AggregatedTrafficPayload {
  * Deterministic ordering keeps it cache-friendly and easy to assert in tests.
  */
 export function buildInsightsPrompt(payload: AggregatedTrafficPayload): string {
-  const lines: string[] = [];
-  lines.push(`Repositories analyzed: ${payload.repoCount}`);
-  lines.push(`Total views (14d): ${payload.totalViews} (${payload.totalUniques} unique visitors)`);
-  lines.push(
-    `Total clones (14d): ${payload.totalClones} (${payload.totalCloneUniques} unique cloners)`
-  );
-  lines.push(`Total stars: ${payload.totalStars}`);
+  const lines = [
+    `Repositories analyzed: ${payload.repoCount}`,
+    `Total views (14d): ${payload.totalViews} (${payload.totalUniques} unique visitors)`,
+    `Total clones (14d): ${payload.totalClones} (${payload.totalCloneUniques} unique cloners)`,
+    `Total stars: ${payload.totalStars}`,
+  ];
 
   if (payload.daily.length > 0) {
     const series = payload.daily
-      .map((d) => `${d.date}: ${d.views} views / ${d.uniques} unique`)
+      .map((day) => `${day.date}: ${day.views} views / ${day.uniques} unique`)
       .join("; ");
     lines.push(`Daily views: ${series}`);
   }
+
   if (payload.topReferrers.length > 0) {
-    const refs = payload.topReferrers.map((r) => `${r.referrer} (${r.count} views)`).join(", ");
+    const refs = payload.topReferrers
+      .map((referrer) => `${referrer.referrer} (${referrer.count} views)`)
+      .join(", ");
     lines.push(`Top referrers: ${refs}`);
   }
+
   if (payload.topPaths.length > 0) {
-    const paths = payload.topPaths.map((p) => `${p.path} (${p.count} views)`).join(", ");
+    const paths = payload.topPaths.map((path) => `${path.path} (${path.count} views)`).join(", ");
     lines.push(`Top pages: ${paths}`);
   }
+
   return lines.join("\n");
 }
 
