@@ -1,174 +1,186 @@
+<!-- SPDX-License-Identifier: MIT -->
 <div align="center">
 
 # GitHub Traffic Analytics
 
-A simple and elegant web application to track and analyze traffic metrics for your GitHub repositories.
+### Self-hosted, open-source GitHub repo analytics — keep your traffic, clones, and stars forever (GitHub deletes them after 14 days). A free Repobeats / star-history alternative.
 
-[![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)](https://nextjs.org/)
-[![React](https://img.shields.io/badge/React-19-61dafb?style=flat-square&logo=react)](https://react.dev/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-4-38b2ac?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
+<!-- Banner committed under assets/ — generate per BANNER.md (dark-tech charts), then uncomment. -->
+<!-- ![GitHub Traffic Analytics](assets/hero.png) -->
+
+[![CI](https://github.com/aliammari1/github-traffic-analytics/actions/workflows/ci.yml/badge.svg)](https://github.com/aliammari1/github-traffic-analytics/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/aliammari1/github-traffic-analytics/actions/workflows/codeql.yml/badge.svg)](https://github.com/aliammari1/github-traffic-analytics/actions/workflows/codeql.yml)
+[![codecov](https://codecov.io/gh/aliammari1/github-traffic-analytics/branch/main/graph/badge.svg)](https://codecov.io/gh/aliammari1/github-traffic-analytics)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/)
+[![pnpm](https://img.shields.io/badge/pnpm-10-f69220?logo=pnpm)](https://pnpm.io/)
+
+[**▶ Live demo**](https://github-traffic-analytics.pages.dev) · [Docs](docs/) · [Deploy your own](#deploy-your-own-cloudflare) · [⭐ Star this repo](https://github.com/aliammari1/github-traffic-analytics)
+
+[![▶ Live dashboard demo](https://img.shields.io/badge/▶_Live_dashboard-demo-2ea44f?style=for-the-badge)](https://github-traffic-analytics.pages.dev)
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/aliammari1/github-traffic-analytics)
+[![⭐ Star](https://img.shields.io/github/stars/aliammari1/github-traffic-analytics?style=for-the-badge&logo=github&label=Star&color=yellow)](https://github.com/aliammari1/github-traffic-analytics)
 
 </div>
 
 ---
 
-## Overview
+## ⚡ Add a live traffic badge to your README
 
-GitHub Traffic Analytics is a web-based dashboard that helps you monitor and analyze traffic patterns for your GitHub repositories. Authenticate with your GitHub account to view real-time traffic data, clone statistics, referrer sources, and popular paths across all your repositories.
+The fastest way to try it: once your instance is deployed, drop a **live traffic
+badge** into any repo's README. It renders total views since you started tracking
+— the number GitHub throws away after 14 days — and links back to your dashboard:
 
-## Features
-
-- **GitHub Authentication**: Secure sign-in via GitHub OAuth
-- **Repository List**: Browse and filter all your accessible repositories
-- **Traffic Dashboard**: View detailed traffic analytics for individual repositories including:
-  - Views and unique visitor counts
-  - Clone and unique clone statistics
-  - Top referrer sources
-  - Popular pages/paths
-  - Historical data visualizations (last 14 days)
-- **Aggregated Traffic**: Overview of total traffic across all your repositories
-- **Clean UI**: Modern, responsive interface built with Tailwind CSS and Shadcn UI components
-
-## Project Structure
-
-```
-src/
-├── app/
-│   ├── api/
-│   │   ├── auth/[...nextauth]/       # NextAuth authentication
-│   │   ├── repositories/             # Repository listing API
-│   │   └── traffic/                  # Traffic data API
-│   ├── repositories/                 # Repositories list page
-│   ├── traffic/                      # Aggregated traffic dashboard
-│   └── page.tsx                      # Home page with sign-in
-├── components/
-│   ├── RepositorySelector.tsx        # Repository selection UI
-│   ├── TrafficDashboard.tsx          # Individual repo traffic display
-│   ├── SessionProvider.tsx           # Auth session provider
-│   └── ui/                           # Shadcn UI components
-├── lib/
-│   ├── auth.ts                       # NextAuth configuration
-│   ├── github.ts                     # GitHub API service
-│   └── utils.ts                      # Utility functions
-└── types/
-    └── next-auth.d.ts               # NextAuth type definitions
+```md
+[![Repo traffic](https://YOUR-APP.pages.dev/api/badge?owner=you&repo=your-repo)](https://YOUR-APP.pages.dev)
 ```
 
-## Getting Started
+The `/api/badge` endpoint is public, edge-cached (Cache-Control + ETag) and
+Cloudflare rate-limited, so it's safe to embed anywhere. A standalone
+**"persist traffic → badge + JSON" GitHub Action** (so you don't even need to
+host the app) is being extracted as **Wave 2** — ⭐ to follow along.
 
-### Prerequisites
+## GitHub Traffic Analytics vs the alternatives
 
-- Node.js 18+ and npm/pnpm
-- GitHub account
-- GitHub OAuth application credentials
+| | **GitHub Traffic Analytics** | GitHub's built-in Insights | Repobeats | star-history |
+| --- | :---: | :---: | :---: | :---: |
+| Keeps traffic/clones past 14 days | ✅ forever | ❌ 14-day window | ❌ image only | n/a |
+| Self-hosted / own your data | ✅ | n/a | ❌ hosted SaaS | ❌ hosted |
+| Price | **$0** (CF free tier) | free | free/paid tiers | free |
+| Embeddable README badge | ✅ live SVG | ❌ | ✅ | ✅ (stars only) |
+| Star history | ✅ | ❌ | ➖ | ✅ |
+| AI traffic summary | ✅ | ❌ | ❌ | ❌ |
+| Open source (MIT) | ✅ | ❌ | ❌ | ✅ |
 
-### Installation
+---
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/aliammari1/github-traffic-analytics.git
-   cd github-traffic-analytics
-   ```
+> [!IMPORTANT]
+> **GitHub's traffic API only returns the last 14 days.** That's a hard limit on
+> GitHub's side. This app works around it by writing a **daily snapshot** of each
+> tracked repo's traffic to a database, so your history accumulates indefinitely
+> from the day you enable tracking. Live (un-tracked) data is still capped at 14 days.
 
-2. **Install dependencies**
-   ```bash
-   pnpm install
-   # or npm install
-   ```
+## What it does
 
-3. **Set up environment variables**
-   Create a `.env.local` file with:
-   ```
-   GITHUB_ID=your_github_oauth_app_id
-   GITHUB_SECRET=your_github_oauth_app_secret
-   NEXTAUTH_URL=http://localhost:3000
-   NEXTAUTH_SECRET=your_secret_key
-   ```
+- **Traffic dashboard** — views, clones, top referrers, and popular paths per repo.
+- **Historical traffic** — daily snapshots persisted to Cloudflare **D1** via a
+  **Cron Worker**, so you see the full timeline beyond GitHub's 14-day window.
+- **AI insights** — a "Summarize my traffic" panel that calls the Anthropic
+  Messages API (`claude-haiku-4-5`) over your aggregated traffic and returns an
+  actionable growth briefing.
+- **Aggregated overview** — totals across all your repositories.
 
-4. **Run the development server**
-   ```bash
-   pnpm dev
-   ```
+## Quickstart
 
-   Open [http://localhost:3000](http://localhost:3000) in your browser.
+```bash
+git clone https://github.com/aliammari1/github-traffic-analytics.git
+cd github-traffic-analytics
+pnpm install
+cp .env.example .env.local   # fill in the values (see below)
+pnpm dev                     # http://localhost:3000
+```
 
-## Tech Stack
+### GitHub OAuth setup
 
-- **Framework**: Next.js 16 with App Router
-- **Language**: TypeScript
-- **UI Components**: Shadcn UI
-- **Styling**: Tailwind CSS 4
-- **Authentication**: NextAuth.js
-- **API Client**: Octokit (GitHub REST API)
-- **Charts**: Recharts
-- **Animation**: Framer Motion
-- **Icons**: Lucide React, Tabler Icons
+Create an OAuth App at **Settings → Developer settings → OAuth Apps → New OAuth App**:
 
-## Usage
+- **Homepage URL:** `http://localhost:3000`
+- **Authorization callback URL:** `http://localhost:3000/api/auth/callback/github`
 
-### Authentication
-1. Click "Sign in with GitHub" on the home page
-2. Authorize the application to access your GitHub data
-3. You'll be redirected to the app dashboard
+The app requests the `repo` and `user:email` scopes — both are required to read
+repository traffic. Each user only ever sees their own data; tokens are never
+exposed to the client.
 
-### View Repository Traffic
-1. Navigate to **Repositories** to see all your repositories
-2. Click on a repository to view its detailed traffic statistics
-3. View traffic data including:
-   - Total views and unique visitors
-   - Clone statistics
-   - Top referrer sources
-   - Popular pages/paths
-   - 14-day historical data
+### Environment variables
 
-### Aggregated Traffic Dashboard
-1. Navigate to **Traffic** to see aggregated metrics across all repositories
-2. View total views, clones, and stars across your account
-3. See a combined traffic chart over the last 14 days
+| Variable | Required | Description |
+| --- | --- | --- |
+| `NEXTAUTH_SECRET` | yes | NextAuth session secret (`openssl rand -base64 32`) |
+| `NEXTAUTH_URL` | yes | App URL (`http://localhost:3000` locally) |
+| `GITHUB_CLIENT_ID` | yes | GitHub OAuth App client id |
+| `GITHUB_CLIENT_SECRET` | yes | GitHub OAuth App client secret |
+| `ANTHROPIC_API_KEY` | no | Enables the AI insights panel; the panel degrades gracefully if unset |
 
-## Pages
+> `next build` needs these present. For CI builds without real credentials, dummy
+> values are sufficient (the build doesn't call the providers).
 
-- **Home** (`/`): Authentication and introduction
-- **Repositories** (`/repositories`): List and browse your repositories
-- **Traffic** (`/traffic`): Aggregated traffic analytics across all repos
+## Scripts
 
-## API Endpoints
+| Command | Description |
+| --- | --- |
+| `pnpm dev` | Dev server (Turbopack) |
+| `pnpm lint` | ESLint (`next lint` was removed in Next 16 → ESLint CLI) |
+| `pnpm typecheck` | `tsc --noEmit` |
+| `pnpm test` / `pnpm test:coverage` | Vitest unit/component tests (80% coverage gate) |
+| `pnpm test:e2e` | Playwright e2e (sign-in → select repo → view traffic, MSW-mocked) |
+| `pnpm build` | Production build |
+| `pnpm cf:build` / `pnpm cf:deploy` | Build/deploy for Cloudflare via `@opennextjs/cloudflare` |
 
-- `POST /api/auth/[...nextauth]/` - NextAuth authentication
-- `GET /api/repositories` - Fetch user's repositories
-- `GET /api/traffic` - Fetch traffic data for a specific repository
+## Tech stack
 
-## Environment Variables
+Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS 4 · shadcn/ui ·
+NextAuth · Octokit · Recharts · Anthropic SDK · Vitest · Playwright + MSW ·
+Cloudflare Pages + D1 + Cron Triggers.
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `GITHUB_ID` | GitHub OAuth App ID | `abc123def456` |
-| `GITHUB_SECRET` | GitHub OAuth App Secret | `secret_key_here` |
-| `NEXTAUTH_URL` | Application URL | `http://localhost:3000` |
-| `NEXTAUTH_SECRET` | Secret for NextAuth | `random_secret_string` |
+## Deploy your own (Cloudflare)
+
+Hosted on **Cloudflare's free tier**: Pages (Next via `@opennextjs/cloudflare`),
+**D1** for snapshots, and a daily **Cron Worker** (`worker/snapshot.ts`).
+
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/aliammari1/github-traffic-analytics)
+
+One click clones the repo to your account and provisions the Worker; you then
+create the D1 database (`wrangler d1 create traffic_analytics`) and set the
+OAuth/Anthropic secrets. The full step-by-step (D1 schema, cron worker, gated CI
+deploy) lives in [`docs/`](docs/) (Nextra) → **Deployment**.
+
+CI deploy is gated on `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` and the
+`ENABLE_CF_DEPLOY` repo variable — forks and this repo never auto-deploy.
+
+## Show your traffic off (embeddable badge)
+
+See [**⚡ Add a live traffic badge to your README**](#-add-a-live-traffic-badge-to-your-readme)
+above for the snippet. The badge renders a Shields-style SVG of total views since
+you started tracking — the number GitHub throws away after 14 days — and is
+edge-cached + rate-limited. Endpoint contract: [`docs/`](docs/) → **Features →
+Traffic badge**. A no-host **GitHub Action** version is coming in Wave 2.
+
+## How I beat GitHub's 14-day limit
+
+GitHub's traffic API is a sliding 14-day window — older data is gone forever.
+The fix is unglamorous and reliable: a **daily Cloudflare Cron Worker** snapshots
+each tracked repo's views/clones into **D1**, so history accumulates indefinitely
+from day one of tracking. Write-up:
+[*How I beat GitHub's 14-day traffic limit*](docs/) (Architecture → Daily snapshots).
+
+## Engineering decisions
+
+- **Cloudflare over Vercel** — Pages + D1 + Cron Triggers natively support the
+  snapshot feature on one free platform.
+- **pnpm over Bun** — reproducible lockfile and first-class CI setup.
+- **Typed `TrafficAccessError`** instead of matching a localized error string, so
+  the previous French-vs-English 403 bug cannot recur.
+
+## Documentation
+
+Full docs live in [`docs/`](docs/) as a Nextra site (Getting Started, Features,
+Architecture, Deployment). Build locally with `cd docs && pnpm install && pnpm dev`.
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+See [CONTRIBUTING.md](CONTRIBUTING.md). PR titles follow
+[Conventional Commits](https://www.conventionalcommits.org/) (enforced in CI).
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+## Related projects
+
+Part of a wider open-source toolkit by [@aliammari1](https://github.com/aliammari1):
+
+- [**awesome-ai-tools**](https://github.com/aliammari1/awesome-ai-tools) — a curated, weekly-updated index of AI tools.
+- [**JobPrep**](https://github.com/aliammari1/JobPrep) — open-source, BYOK AI interview-prep platform (Final Round AI alternative).
+- [**Leetcode_problems**](https://github.com/aliammari1/Leetcode_problems) — solutions including real wrong/TLE submissions.
+
+⭐ If this saved your traffic history, a star helps others find it.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- [GitHub](https://github.com) - For the powerful GitHub API
-- [Next.js](https://nextjs.org/) - For the amazing React framework
-- [Vercel](https://vercel.com) - For hosting and deployment platform
-- [Shadcn UI](https://ui.shadcn.com/) - For the beautiful UI components
-
-## Support
-
-If you have any questions or need help, please open an issue on GitHub.
+[MIT](LICENSE) © Ali Ammari.

@@ -1,4 +1,20 @@
+// SPDX-License-Identifier: MIT
 import { Octokit } from "@octokit/rest";
+
+/**
+ * Thrown when the authenticated user lacks push/admin access to a repository's
+ * traffic data (GitHub returns 403). Carries a stable `status` so callers can
+ * branch on the error type rather than matching a localized message string.
+ */
+export class TrafficAccessError extends Error {
+  readonly status = 403 as const;
+  constructor(
+    message = "Access denied: You must be the repository owner or have push access to view traffic data."
+  ) {
+    super(message);
+    this.name = "TrafficAccessError";
+  }
+}
 
 export interface TrafficData {
   count: number;
@@ -65,9 +81,7 @@ export class GitHubService {
     } catch (error: unknown) {
       console.error(`Error fetching traffic data for ${owner}/${repo}:`, error);
       if (error instanceof Error && "status" in error && error.status === 403) {
-        throw new Error(
-          "Accès refusé : Vous devez être propriétaire du dépôt ou avoir un accès push pour voir les données de trafic."
-        );
+        throw new TrafficAccessError();
       }
       throw error;
     }
@@ -84,9 +98,7 @@ export class GitHubService {
     } catch (error: unknown) {
       console.error(`Error fetching clone data for ${owner}/${repo}:`, error);
       if (error instanceof Error && "status" in error && error.status === 403) {
-        throw new Error(
-          "Accès refusé : Vous devez être propriétaire du dépôt ou avoir un accès push pour voir les données de trafic."
-        );
+        throw new TrafficAccessError();
       }
       throw error;
     }
@@ -102,9 +114,7 @@ export class GitHubService {
     } catch (error: unknown) {
       console.error(`Error fetching referrer data for ${owner}/${repo}:`, error);
       if (error instanceof Error && "status" in error && error.status === 403) {
-        throw new Error(
-          "Accès refusé : Vous devez être propriétaire du dépôt ou avoir un accès push pour voir les données de trafic."
-        );
+        throw new TrafficAccessError();
       }
       throw error;
     }
@@ -120,9 +130,7 @@ export class GitHubService {
     } catch (error: unknown) {
       console.error(`Error fetching popular paths for ${owner}/${repo}:`, error);
       if (error instanceof Error && "status" in error && error.status === 403) {
-        throw new Error(
-          "Accès refusé : Vous devez être propriétaire du dépôt ou avoir un accès push pour voir les données de trafic."
-        );
+        throw new TrafficAccessError();
       }
       throw error;
     }

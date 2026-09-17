@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 "use client";
 
 import { useState, useEffect } from "react";
@@ -8,6 +9,8 @@ import { useRouter } from "next/navigation";
 import { TrendingUp, Eye, GitBranch, Star, ArrowLeft, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Repository } from "@/lib/github";
+import InsightsPanel from "@/components/InsightsPanel";
+import type { AggregatedTrafficPayload } from "@/lib/insights";
 import {
   LineChart,
   Line,
@@ -26,6 +29,8 @@ interface AggregatedTraffic {
   totalStars: number;
   repoCount: number;
   viewsData: Array<{ date: string; views: number; uniques: number }>;
+  topReferrers: Array<{ referrer: string; count: number; uniques: number }>;
+  topPaths: Array<{ path: string; count: number; uniques: number }>;
 }
 
 /**
@@ -76,6 +81,8 @@ export default function TrafficPage() {
       let totalClones = 0;
       let totalCloneUniques = 0;
       const viewsMap: Record<string, { views: number; uniques: number }> = {};
+      const referrerMap: Record<string, { count: number; uniques: number }> = {};
+      const pathMap: Record<string, { count: number; uniques: number }> = {};
 
       for (const repo of accessibleRepos) {
         try {
@@ -103,6 +110,20 @@ export default function TrafficPage() {
                 viewsMap[date].uniques += v.uniques;
               }
             );
+
+            // Aggregate referrers and popular paths for the AI insights payload.
+            data.referrers?.forEach((r: { referrer: string; count: number; uniques: number }) => {
+              const key = r.referrer || "Direct";
+              if (!referrerMap[key]) referrerMap[key] = { count: 0, uniques: 0 };
+              referrerMap[key].count += r.count;
+              referrerMap[key].uniques += r.uniques;
+            });
+            data.paths?.forEach((p: { path: string; count: number; uniques: number }) => {
+              const key = p.path;
+              if (!pathMap[key]) pathMap[key] = { count: 0, uniques: 0 };
+              pathMap[key].count += p.count;
+              pathMap[key].uniques += p.uniques;
+            });
           }
         } catch (e) {
           console.error(`Failed to fetch traffic for ${repo.name}`, e);
@@ -110,6 +131,15 @@ export default function TrafficPage() {
       }
 
       const totalStars = repos.reduce((acc, r) => acc + r.stargazers_count, 0);
+
+      const topReferrers = Object.entries(referrerMap)
+        .map(([referrer, v]) => ({ referrer, ...v }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+      const topPaths = Object.entries(pathMap)
+        .map(([path, v]) => ({ path, ...v }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
 
       setTrafficData({
         totalViews,
@@ -121,6 +151,8 @@ export default function TrafficPage() {
         viewsData: Object.entries(viewsMap)
           .map(([date, data]) => ({ date, ...data }))
           .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
+        topReferrers,
+        topPaths,
       });
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -278,6 +310,27 @@ export default function TrafficPage() {
             </div>
           )}
         </div>
+
+        {/* AI Insights */}
+        {trafficData && (
+          <div className="opacity-0 animate-fade-in-up animation-delay-200">
+            <InsightsPanel
+              payload={
+                {
+                  repoCount: trafficData.repoCount,
+                  totalViews: trafficData.totalViews,
+                  totalUniques: trafficData.totalUniques,
+                  totalClones: trafficData.totalClones,
+                  totalCloneUniques: trafficData.totalCloneUniques,
+                  totalStars: trafficData.totalStars,
+                  topReferrers: trafficData.topReferrers,
+                  topPaths: trafficData.topPaths,
+                  daily: trafficData.viewsData,
+                } satisfies AggregatedTrafficPayload
+              }
+            />
+          </div>
+        )}
 
         {/* Top Repositories */}
         <div className="rounded-lg border border-border overflow-hidden opacity-0 animate-fade-in-up animation-delay-300">

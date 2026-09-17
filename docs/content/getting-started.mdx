@@ -1,0 +1,55 @@
+---
+title: Getting Started
+---
+
+# Getting Started
+
+## Prerequisites
+
+- Node.js 22+
+- pnpm 10+
+- A GitHub OAuth App
+
+## 1. Create a GitHub OAuth App
+
+Go to **Settings → Developer settings → OAuth Apps → New OAuth App**:
+
+- **Homepage URL:** `http://localhost:3000`
+- **Authorization callback URL:** `http://localhost:3000/api/auth/callback/github`
+
+The app requests the `repo` and `user:email` scopes (needed to read repo traffic).
+
+## 2. Configure environment
+
+```bash
+cp .env.example .env.local
+```
+
+Fill in:
+
+| Variable | Purpose |
+| --- | --- |
+| `NEXTAUTH_SECRET` | NextAuth session secret (`openssl rand -base64 32`) |
+| `NEXTAUTH_URL` | App URL (`http://localhost:3000` locally) |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | From your OAuth App |
+| `ANTHROPIC_API_KEY` | Optional — enables the AI insights panel |
+
+## 3. Run
+
+```bash
+pnpm install
+pnpm dev
+```
+
+Open [http://localhost:3000](http://localhost:3000), sign in with GitHub, and pick a repository.
+
+## Scripts
+
+| Command | Description |
+| --- | --- |
+| `pnpm dev` | Start the dev server |
+| `pnpm lint` | ESLint (Next 16 removed `next lint`) |
+| `pnpm typecheck` | `tsc --noEmit` |
+| `pnpm test` / `pnpm test:coverage` | Vitest (80% coverage gate) |
+| `pnpm test:e2e` | Playwright e2e |
+| `pnpm build` | Production build |

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":semanticCommits",
+    ":dependencyDashboard",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "timezone": "UTC",
+  "schedule": ["before 6am on monday"],
+  "labels": ["dependencies"],
+  "packageRules": [
+    {
+      "description": "Group all non-major npm updates into one PR.",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "npm minor/patch"
+    },
+    {
+      "description": "Group Next.js + React ecosystem together.",
+      "matchPackageNames": ["next", "eslint-config-next", "react", "react-dom", "@types/react", "@types/react-dom"],
+      "groupName": "next + react"
+    },
+    {
+      "description": "Group test tooling.",
+      "matchPackageNames": ["vitest", "@vitest/coverage-v8", "@testing-library/react", "@testing-library/jest-dom", "@testing-library/user-event", "jsdom", "msw", "@playwright/test"],
+      "groupName": "test tooling"
+    },
+    {
+      "description": "Automerge GitHub Actions digest bumps.",
+      "matchManagers": ["github-actions"],
+      "automerge": true
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "labels": ["security"]
+  }
+}
