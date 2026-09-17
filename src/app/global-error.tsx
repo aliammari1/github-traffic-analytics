@@ -3,18 +3,17 @@
 
 import { useEffect } from "react";
 
+type GlobalErrorProps = Readonly<{
+  error: Error & { digest?: string };
+  reset: () => void;
+}>;
+
 /**
  * Root error boundary (App Router). Replaces the whole document when the root
  * layout itself throws, so it must render its own <html>/<body>. Last-resort
  * fallback above the per-route `error.tsx`.
  */
-export default function GlobalError({
-  error,
-  reset,
-}: {
-  error: Error & { digest?: string };
-  reset: () => void;
-}) {
+export default function GlobalError({ error, reset }: GlobalErrorProps) {
   useEffect(() => {
     console.error("Global error boundary caught:", error);
   }, [error]);
