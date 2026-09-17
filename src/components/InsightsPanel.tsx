@@ -16,7 +16,7 @@ interface InsightsPanelProps {
  * to /api/insights and renders the AI-generated briefing. Handles loading and
  * error states, including the "not configured" (503) case.
  */
-export default function InsightsPanel({ payload }: InsightsPanelProps) {
+export default function InsightsPanel({ payload }: Readonly<InsightsPanelProps>) {
   const [summary, setSummary] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,7 +77,7 @@ export default function InsightsPanel({ payload }: InsightsPanelProps) {
         <Button onClick={generate} disabled={loading} size="sm" className="gap-2 shrink-0">
           {loading ? (
             <>
-              <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+              <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />{" "}
               Analyzing…
             </>
           ) : (
