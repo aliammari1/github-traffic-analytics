@@ -33,10 +33,10 @@ const SVG_HEADERS = {
  */
 function etagFor(body: string): string {
   let hash = 5381;
-  for (let i = 0; i < body.length; i++) {
-    hash = ((hash << 5) + hash + body.charCodeAt(i)) | 0;
+  for (const char of body) {
+    hash = Math.trunc((hash * 33 + (char.codePointAt(0) ?? 0)) % 0x1_0000_0000);
   }
-  return `"${(hash >>> 0).toString(36)}"`;
+  return `"${hash.toString(36)}"`;
 }
 
 function svg(request: NextRequest, body: string, status = 200): Response {
