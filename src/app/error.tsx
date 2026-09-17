@@ -24,8 +24,8 @@ export default function AppError({ error, reset }: AppErrorProps) {
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-6 text-center">
       <h2 className="text-2xl font-semibold">Something went wrong</h2>
       <p className="max-w-md text-sm text-muted-foreground">
-        We couldn&apos;t load this view. This is usually transient — try again, and
-        if it persists, please open an issue.
+        We couldn&apos;t load this view. This is usually transient — try again, and if it persists,
+        please open an issue.
       </p>
       {error.digest && (
         <p className="text-xs text-muted-foreground/70">Error ref: {error.digest}</p>
