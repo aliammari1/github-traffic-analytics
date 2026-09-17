@@ -69,8 +69,10 @@ export async function POST(request: NextRequest) {
   const body = new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
-        for await (const text of stream.on("error", () => {}).textStream) {
-          controller.enqueue(encoder.encode(text));
+        for await (const event of stream) {
+          if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+            controller.enqueue(encoder.encode(event.delta.text));
+          }
         }
         controller.close();
       } catch (error: unknown) {
@@ -78,6 +80,9 @@ export async function POST(request: NextRequest) {
         console.error("Error streaming traffic insights:", error);
         controller.close();
       }
+    },
+    cancel() {
+      stream.abort();
     },
   });
 
