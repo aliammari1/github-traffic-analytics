@@ -4,19 +4,18 @@
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 
+type AppErrorProps = Readonly<{
+  error: Error & { digest?: string };
+  reset: () => void;
+}>;
+
 /**
  * Route-segment error boundary (App Router). Catches render/runtime errors in
  * the page tree below `app/` and offers a recovery action instead of a blank
  * screen. Logged to the console here; the browser Sentry SDK is a Wave 2 add
  * (only @sentry/cloudflare — the Worker runtime — is wired today).
  */
-export default function Error({
-  error,
-  reset,
-}: {
-  error: Error & { digest?: string };
-  reset: () => void;
-}) {
+export default function AppError({ error, reset }: AppErrorProps) {
   useEffect(() => {
     console.error("Dashboard error boundary caught:", error);
   }, [error]);
