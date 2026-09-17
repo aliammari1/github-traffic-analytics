@@ -34,10 +34,7 @@ const dailyPointSchema = z.object({
 });
 
 const referrerSchema = z.object({
-  referrer: z.preprocess(
-    (value) => (value == null ? "Direct" : String(value)),
-    z.string()
-  ),
+  referrer: z.preprocess((value) => (value == null ? "Direct" : String(value)), z.string()),
   count: safeNumber,
   uniques: safeNumber,
 });
