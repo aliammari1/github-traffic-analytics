@@ -4,6 +4,7 @@ import {
   toDayKey,
   upsertDailyCounts,
   getHistory,
+  getTotalViews,
   mergeHistory,
   type D1Database,
   type D1PreparedStatement,
@@ -89,6 +90,20 @@ describe("getHistory", () => {
     });
     expect(result).toEqual(rows);
     expect(bound[0]).toEqual(["alice", "alice", "repo", "2026-05-01", "2026-06-30"]);
+  });
+});
+
+describe("getTotalViews", () => {
+  it("deduplicates per-day rows before summing across trackers", async () => {
+    const all = vi.fn().mockResolvedValue({ results: [{ total: 42 }] });
+    const bind = vi.fn().mockReturnValue({ all });
+    const prepare = vi.fn().mockReturnValue({ bind });
+    const db = { prepare, batch: vi.fn() } as unknown as D1Database;
+
+    await expect(getTotalViews(db, { repoOwner: "o", repoName: "r" })).resolves.toBe(42);
+    expect(prepare).toHaveBeenCalledWith(expect.stringContaining("MAX(count) AS day_count"));
+    expect(prepare).toHaveBeenCalledWith(expect.stringContaining("GROUP BY day"));
+    expect(bind).toHaveBeenCalledWith("o", "r");
   });
 });
 

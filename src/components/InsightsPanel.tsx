@@ -55,6 +55,8 @@ export default function InsightsPanel({ payload }: Readonly<InsightsPanelProps>)
         accumulated += decoder.decode(value, { stream: true });
         setSummary(accumulated);
       }
+      accumulated += decoder.decode();
+      setSummary(accumulated);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {

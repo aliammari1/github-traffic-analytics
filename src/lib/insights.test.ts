@@ -38,7 +38,7 @@ describe("parseTrafficPayload", () => {
   it("drops malformed referrer/path entries", () => {
     const result = parseTrafficPayload({
       ...validBody,
-      topReferrers: [null, "bad", { referrer: "x.com", count: 5, uniques: 2 }],
+      topReferrers: [null, "bad", [], { referrer: "x.com", count: 5, uniques: 2 }],
     });
     expect(result.topReferrers).toEqual([{ referrer: "x.com", count: 5, uniques: 2 }]);
   });
@@ -51,6 +51,16 @@ describe("parseTrafficPayload", () => {
     }));
     const result = parseTrafficPayload({ ...validBody, topReferrers: many });
     expect(result.topReferrers).toHaveLength(10);
+  });
+
+  it("caps daily traffic to GitHub's 14-day source window", () => {
+    const daily = Array.from({ length: 20 }, (_, i) => ({
+      date: `Jun ${i + 1}`,
+      views: i + 1,
+      uniques: i,
+    }));
+    const result = parseTrafficPayload({ ...validBody, daily });
+    expect(result.daily).toHaveLength(14);
   });
 
   it("throws for a non-object body", () => {
