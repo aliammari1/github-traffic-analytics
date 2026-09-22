@@ -73,20 +73,20 @@ describe("POST /api/insights", () => {
   });
 
   it("returns 503 when ANTHROPIC_API_KEY is not set", async () => {
-    authMock.mockResolvedValue({ accessToken: "t" });
+    authMock.mockResolvedValue({ user: { id: "123" } });
     delete process.env.ANTHROPIC_API_KEY;
     const res = await POST(postReq(validPayload));
     expect(res.status).toBe(503);
   });
 
   it("returns 400 for an empty/invalid payload", async () => {
-    authMock.mockResolvedValue({ accessToken: "t" });
+    authMock.mockResolvedValue({ user: { id: "123" } });
     const res = await POST(postReq({ ...validPayload, totalViews: 0, totalClones: 0, daily: [] }));
     expect(res.status).toBe(400);
   });
 
   it("streams the AI summary on success and uses claude-haiku-4-5", async () => {
-    authMock.mockResolvedValue({ accessToken: "t" });
+    authMock.mockResolvedValue({ user: { id: "123" } });
     streamMessage.mockReturnValue(fakeStream(["Your ", "traffic ", "is up."]));
     const res = await POST(postReq(validPayload));
     expect(res.status).toBe(200);
@@ -98,7 +98,7 @@ describe("POST /api/insights", () => {
   });
 
   it("returns 502 when the model call fails to start", async () => {
-    authMock.mockResolvedValue({ accessToken: "t" });
+    authMock.mockResolvedValue({ user: { id: "123" } });
     streamMessage.mockImplementation(() => {
       throw new Error("upstream");
     });
@@ -107,7 +107,7 @@ describe("POST /api/insights", () => {
   });
 
   it("ends the stream gracefully if it errors mid-flight", async () => {
-    authMock.mockResolvedValue({ accessToken: "t" });
+    authMock.mockResolvedValue({ user: { id: "123" } });
     streamMessage.mockReturnValue({
       async *[Symbol.asyncIterator]() {
         yield textDelta("partial");

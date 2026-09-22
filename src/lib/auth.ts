@@ -22,7 +22,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return token;
     },
     async session({ session, token }) {
-      session.accessToken = token.accessToken as string;
+      // Expose only the stable user id to client sessions. The GitHub OAuth token
+      // remains inside the encrypted Auth.js JWT and is read only by server routes.
+      if (session.user && token.sub) {
+        session.user.id = token.sub;
+      }
       return session;
     },
   },

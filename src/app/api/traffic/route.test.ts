@@ -3,8 +3,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 import { TrafficAccessError } from "@/lib/github";
 
-const authMock = vi.fn();
-vi.mock("@/lib/auth", () => ({ auth: () => authMock() }));
+const serverAuthMock = vi.fn();
+vi.mock("@/lib/server-auth", () => ({ getServerAuth: (...args: unknown[]) => serverAuthMock(...args) }));
 
 const serviceMock = {
   getTrafficViews: vi.fn(),
@@ -33,19 +33,19 @@ describe("GET /api/traffic", () => {
   });
 
   it("returns 401 without an access token", async () => {
-    authMock.mockResolvedValue(null);
+    serverAuthMock.mockResolvedValue(null);
     const res = await GET(req("http://x/api/traffic?owner=o&repo=r"));
     expect(res.status).toBe(401);
   });
 
   it("returns 400 when owner/repo missing", async () => {
-    authMock.mockResolvedValue({ accessToken: "t" });
+    serverAuthMock.mockResolvedValue({ accessToken: "t", userId: "123" });
     const res = await GET(req("http://x/api/traffic"));
     expect(res.status).toBe(400);
   });
 
   it("aggregates and returns traffic data on success", async () => {
-    authMock.mockResolvedValue({ accessToken: "t" });
+    serverAuthMock.mockResolvedValue({ accessToken: "t", userId: "123" });
     serviceMock.getTrafficViews.mockResolvedValue({ count: 1, uniques: 1, views: [] });
     serviceMock.getClones.mockResolvedValue({ count: 2, uniques: 1, clones: [] });
     serviceMock.getReferrers.mockResolvedValue([]);
@@ -59,7 +59,7 @@ describe("GET /api/traffic", () => {
   });
 
   it("maps TrafficAccessError to 403 with the English message", async () => {
-    authMock.mockResolvedValue({ accessToken: "t" });
+    serverAuthMock.mockResolvedValue({ accessToken: "t", userId: "123" });
     serviceMock.getTrafficViews.mockRejectedValue(new TrafficAccessError());
     const res = await GET(req("http://x/api/traffic?owner=o&repo=r"));
     expect(res.status).toBe(403);
@@ -68,7 +68,7 @@ describe("GET /api/traffic", () => {
   });
 
   it("returns 500 on other errors", async () => {
-    authMock.mockResolvedValue({ accessToken: "t" });
+    serverAuthMock.mockResolvedValue({ accessToken: "t", userId: "123" });
     serviceMock.getTrafficViews.mockRejectedValue(new Error("boom"));
     const res = await GET(req("http://x/api/traffic?owner=o&repo=r"));
     expect(res.status).toBe(500);

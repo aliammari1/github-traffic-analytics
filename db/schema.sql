@@ -10,7 +10,7 @@
 
 CREATE TABLE IF NOT EXISTS traffic_snapshots (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
-  -- GitHub login (or numeric user id) the snapshot belongs to; scopes reads per-user.
+  -- Stable Auth.js subject / GitHub account id; scopes reads per-user.
   owner_login   TEXT    NOT NULL,
   repo_owner    TEXT    NOT NULL,
   repo_name     TEXT    NOT NULL,

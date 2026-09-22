@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-import { auth } from "@/lib/auth";
+import { getServerAuth } from "@/lib/server-auth";
 import { getD1 } from "@/lib/d1";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -15,8 +15,8 @@ import { NextRequest, NextResponse } from "next/server";
  *   - 503 when no D1 binding is available.
  */
 export async function POST(request: NextRequest) {
-  const session = await auth();
-  if (!session?.accessToken || !session.user?.name) {
+  const serverAuth = await getServerAuth(request);
+  if (!serverAuth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
        ON CONFLICT (owner_login, repo_owner, repo_name)
        DO UPDATE SET access_token = excluded.access_token`
     )
-    .bind(session.user.name, owner, repo, session.accessToken)
+    .bind(serverAuth.userId, owner, repo, serverAuth.accessToken)
     .run();
 
   return NextResponse.json({ tracked: true });

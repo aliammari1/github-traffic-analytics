@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { NextRequest } from "next/server";
 
-const authMock = vi.fn();
-vi.mock("@/lib/auth", () => ({ auth: () => authMock() }));
+const serverAuthMock = vi.fn();
+vi.mock("@/lib/server-auth", () => ({ getServerAuth: (...args: unknown[]) => serverAuthMock(...args) }));
 
 const getRepositories = vi.fn();
 vi.mock("@/lib/github", async (importOriginal) => {
@@ -15,6 +16,10 @@ vi.mock("@/lib/github", async (importOriginal) => {
 
 import { GET } from "./route";
 
+function req() {
+  return new NextRequest(new Request("http://x/api/repositories"));
+}
+
 describe("GET /api/repositories", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -22,23 +27,23 @@ describe("GET /api/repositories", () => {
   });
 
   it("returns 401 without an access token", async () => {
-    authMock.mockResolvedValue(null);
-    const res = await GET();
+    serverAuthMock.mockResolvedValue(null);
+    const res = await GET(req());
     expect(res.status).toBe(401);
   });
 
   it("returns the repository list on success", async () => {
-    authMock.mockResolvedValue({ accessToken: "t" });
+    serverAuthMock.mockResolvedValue({ accessToken: "t", userId: "123" });
     getRepositories.mockResolvedValue([{ id: 1, name: "repo" }]);
-    const res = await GET();
+    const res = await GET(req());
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual([{ id: 1, name: "repo" }]);
   });
 
   it("returns 500 when the service throws", async () => {
-    authMock.mockResolvedValue({ accessToken: "t" });
+    serverAuthMock.mockResolvedValue({ accessToken: "t", userId: "123" });
     getRepositories.mockRejectedValue(new Error("boom"));
-    const res = await GET();
+    const res = await GET(req());
     expect(res.status).toBe(500);
   });
 });

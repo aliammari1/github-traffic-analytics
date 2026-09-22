@@ -2,8 +2,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 
-const authMock = vi.fn();
-vi.mock("@/lib/auth", () => ({ auth: () => authMock() }));
+const serverAuthMock = vi.fn();
+vi.mock("@/lib/server-auth", () => ({ getServerAuth: (...args: unknown[]) => serverAuthMock(...args) }));
 
 const getD1Mock = vi.fn();
 vi.mock("@/lib/d1", () => ({ getD1: () => getD1Mock() }));
@@ -22,31 +22,31 @@ function postReq(body: unknown) {
 
 describe("POST /api/track", () => {
   beforeEach(() => {
-    authMock.mockReset();
+    serverAuthMock.mockReset();
     getD1Mock.mockReset();
   });
 
   it("returns 401 when unauthenticated", async () => {
-    authMock.mockResolvedValue(null);
+    serverAuthMock.mockResolvedValue(null);
     const res = await POST(postReq({ owner: "o", repo: "r" }));
     expect(res.status).toBe(401);
   });
 
   it("returns 400 when owner/repo missing", async () => {
-    authMock.mockResolvedValue({ accessToken: "t", user: { name: "alice" } });
+    serverAuthMock.mockResolvedValue({ accessToken: "t", userId: "123" });
     const res = await POST(postReq({ owner: "o" }));
     expect(res.status).toBe(400);
   });
 
   it("returns 503 when no D1 binding is available", async () => {
-    authMock.mockResolvedValue({ accessToken: "t", user: { name: "alice" } });
+    serverAuthMock.mockResolvedValue({ accessToken: "t", userId: "123" });
     getD1Mock.mockResolvedValue(null);
     const res = await POST(postReq({ owner: "o", repo: "r" }));
     expect(res.status).toBe(503);
   });
 
   it("upserts the tracked repo and returns tracked:true", async () => {
-    authMock.mockResolvedValue({ accessToken: "tok", user: { name: "alice" } });
+    serverAuthMock.mockResolvedValue({ accessToken: "tok", userId: "123" });
     const run = vi.fn().mockResolvedValue({});
     const bind = vi.fn().mockReturnValue({ run });
     getD1Mock.mockResolvedValue({ prepare: vi.fn().mockReturnValue({ bind }) });
@@ -54,6 +54,6 @@ describe("POST /api/track", () => {
     const res = await POST(postReq({ owner: "o", repo: "r" }));
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ tracked: true });
-    expect(bind).toHaveBeenCalledWith("alice", "o", "r", "tok");
+    expect(bind).toHaveBeenCalledWith("123", "o", "r", "tok");
   });
 });
