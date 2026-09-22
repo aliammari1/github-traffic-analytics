@@ -18,8 +18,7 @@ import { NextRequest } from "next/server";
  */
 export const dynamic = "force-dynamic";
 
-const SVG_CACHE_CONTROL =
-  "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400";
+const SVG_CACHE_CONTROL = "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400";
 
 const SVG_HEADERS = {
   "Content-Type": "image/svg+xml; charset=utf-8",
