@@ -50,9 +50,9 @@ function objectArray<T extends z.ZodTypeAny>(item: T, cap?: number) {
   return z.preprocess(
     (value) => {
       if (!Array.isArray(value)) return [];
-      const objects = value.filter(
-        (entry) => !!entry && typeof entry === "object" && !Array.isArray(entry)
-      );
+      const objects = value.filter((entry) => {
+        return !!entry && typeof entry === "object" && !Array.isArray(entry);
+      });
       return cap ? objects.slice(0, cap) : objects;
     },
     z.array(item)
