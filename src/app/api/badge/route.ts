@@ -65,8 +65,9 @@ function svg(
 }
 
 async function isPublicGitHubRepository(owner: string, repo: string): Promise<boolean> {
-  const url =
-    "https://api.github.com/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo);
+  const encodedOwner = encodeURIComponent(owner);
+  const encodedRepo = encodeURIComponent(repo);
+  const url = `https://api.github.com/repos/${encodedOwner}/${encodedRepo}`;
   const response = await fetch(url, {
     headers: {
       Accept: "application/vnd.github+json",
@@ -79,7 +80,9 @@ async function isPublicGitHubRepository(owner: string, repo: string): Promise<bo
   // GitHub deliberately returns 404 for private repositories to unauthenticated
   // callers, which makes this an effective visibility check without a user token.
   if (response.status === 404) return false;
-  if (!response.ok) throw new Error(`GitHub repository visibility check failed: ${response.status}`);
+  if (!response.ok) {
+    throw new Error(`GitHub repository visibility check failed: ${response.status}`);
+  }
 
   const repository = (await response.json()) as { private?: boolean };
   return repository.private === false;

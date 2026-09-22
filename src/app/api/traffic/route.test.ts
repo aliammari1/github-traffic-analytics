@@ -4,7 +4,9 @@ import { NextRequest } from "next/server";
 import { TrafficAccessError } from "@/lib/github";
 
 const serverAuthMock = vi.fn();
-vi.mock("@/lib/server-auth", () => ({ getServerAuth: (...args: unknown[]) => serverAuthMock(...args) }));
+vi.mock("@/lib/server-auth", () => ({
+  getServerAuth: (...args: unknown[]) => serverAuthMock(...args),
+}));
 
 const serviceMock = {
   getTrafficViews: vi.fn(),

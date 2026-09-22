@@ -36,7 +36,7 @@ const dailyPointSchema = z.object({
 const referrerSchema = z.object({
   referrer: z.preprocess(
     (value) => (value == null ? "Direct" : String(value)),
-    z.string()
+    z.string(),
   ),
   count: safeNumber,
   uniques: safeNumber,
@@ -54,11 +54,11 @@ function objectArray<T extends z.ZodTypeAny>(item: T, cap?: number) {
     (value) => {
       if (!Array.isArray(value)) return [];
       const objects = value.filter(
-        (entry) => !!entry && typeof entry === "object" && !Array.isArray(entry)
+        (entry) => !!entry && typeof entry === "object" && !Array.isArray(entry),
       );
       return cap ? objects.slice(0, cap) : objects;
     },
-    z.array(item)
+    z.array(item),
   );
 }
 

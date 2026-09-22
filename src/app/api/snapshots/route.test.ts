@@ -3,7 +3,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 
 const serverAuthMock = vi.fn();
-vi.mock("@/lib/server-auth", () => ({ getServerAuth: (...args: unknown[]) => serverAuthMock(...args) }));
+vi.mock("@/lib/server-auth", () => ({
+  getServerAuth: (...args: unknown[]) => serverAuthMock(...args),
+}));
 
 const getD1Mock = vi.fn();
 vi.mock("@/lib/d1", () => ({ getD1: () => getD1Mock() }));
