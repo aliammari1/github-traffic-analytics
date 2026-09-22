@@ -29,8 +29,9 @@ CREATE TABLE IF NOT EXISTS traffic_snapshots (
 CREATE INDEX IF NOT EXISTS idx_snapshots_lookup
   ON traffic_snapshots (owner_login, repo_owner, repo_name, metric, day);
 
--- Stores the encrypted/opaque token + repo list the cron uses to call GitHub on
--- behalf of a user. Populated when a user opts in to historical tracking.
+-- Stores the server-side GitHub OAuth token + repo list the cron uses to call
+-- GitHub on behalf of a user. Treat this table as sensitive and restrict D1 access.
+-- Populated only when a user opts in to historical tracking.
 CREATE TABLE IF NOT EXISTS tracked_repos (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   owner_login   TEXT    NOT NULL,

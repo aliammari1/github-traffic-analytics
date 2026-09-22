@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: MIT
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
-
-const fetchMock = vi.fn();
-vi.stubGlobal("fetch", fetchMock);
+import { server, http, HttpResponse } from "@/test/msw";
 
 const getD1Mock = vi.fn();
 const limitMock = vi.fn().mockResolvedValue({ success: true });
@@ -23,11 +21,10 @@ function req(url: string) {
 
 describe("GET /api/badge", () => {
   beforeEach(() => {
-    fetchMock.mockReset().mockResolvedValue(
-      new Response(JSON.stringify({ private: false }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      })
+    server.use(
+      http.get("https://api.github.com/repos/:owner/:repo", () =>
+        HttpResponse.json({ private: false })
+      )
     );
     getD1Mock.mockReset();
     limitMock.mockReset().mockResolvedValue({ success: true });
@@ -58,7 +55,12 @@ describe("GET /api/badge", () => {
   });
 
   it("does not expose traffic for private or nonexistent repositories", async () => {
-    fetchMock.mockResolvedValue(new Response(null, { status: 404 }));
+    server.use(
+      http.get(
+        "https://api.github.com/repos/:owner/:repo",
+        () => new HttpResponse(null, { status: 404 })
+      )
+    );
     const prepare = vi.fn();
     getD1Mock.mockResolvedValue({ prepare });
 
