@@ -30,6 +30,7 @@ export default defineConfig({
         "src/lib/github.ts",
         "src/lib/insights.ts",
         "src/lib/snapshots.ts",
+        "src/lib/server-auth.ts",
         "src/lib/utils.ts",
         "src/components/TrafficDashboard.tsx",
         "src/components/RepositorySelector.tsx",

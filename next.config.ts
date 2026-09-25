@@ -30,13 +30,17 @@ const csp = [
   ...(process.env.NODE_ENV === "production" ? ["upgrade-insecure-requests"] : []),
 ].join("; ");
 
-const securityHeaders = [
-  { key: "Content-Security-Policy", value: csp },
+const baselineSecurityHeaders = [
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
   { key: "X-Content-Type-Options", value: "nosniff" },
-  { key: "X-Frame-Options", value: "DENY" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+];
+
+const appSecurityHeaders = [
+  { key: "Content-Security-Policy", value: csp },
+  { key: "X-Frame-Options", value: "DENY" },
+  ...baselineSecurityHeaders,
 ];
 
 const nextConfig: NextConfig = {
@@ -50,9 +54,10 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [
-      // App pages get the full security header set. The public /api/badge is an
-      // embeddable image and is deliberately excluded from frame-ancestors/CSP.
-      { source: "/((?!api/badge).*)", headers: securityHeaders },
+      // The badge is embeddable, so omit CSP/frame restrictions only; it still
+      // receives transport/content-type/referrer/permissions protections.
+      { source: "/api/badge", headers: baselineSecurityHeaders },
+      { source: "/((?!api/badge).*)", headers: appSecurityHeaders },
     ];
   },
 };

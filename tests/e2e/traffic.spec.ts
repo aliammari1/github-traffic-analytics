@@ -11,9 +11,8 @@ import { test, expect, type Page } from "@playwright/test";
  */
 
 const SESSION = {
-  user: { name: "alice", email: "alice@example.com", image: "https://example.com/a.png" },
+  user: { id: "123", name: "alice", email: "alice@example.com", image: "https://example.com/a.png" },
   expires: "2999-01-01T00:00:00.000Z",
-  accessToken: "fake-token",
 };
 
 const REPOS = [

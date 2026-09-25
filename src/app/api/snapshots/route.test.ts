@@ -2,8 +2,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 
-const authMock = vi.fn();
-vi.mock("@/lib/auth", () => ({ auth: () => authMock() }));
+const serverAuthMock = vi.fn();
+vi.mock("@/lib/server-auth", () => ({
+  getServerAuth: (...args: unknown[]) => serverAuthMock(...args),
+}));
 
 const getD1Mock = vi.fn();
 vi.mock("@/lib/d1", () => ({ getD1: () => getD1Mock() }));
@@ -16,31 +18,31 @@ function req(url: string) {
 
 describe("GET /api/snapshots", () => {
   beforeEach(() => {
-    authMock.mockReset();
+    serverAuthMock.mockReset();
     getD1Mock.mockReset();
   });
 
   it("returns 401 when unauthenticated", async () => {
-    authMock.mockResolvedValue(null);
+    serverAuthMock.mockResolvedValue(null);
     const res = await GET(req("http://x/api/snapshots?owner=o&repo=r"));
     expect(res.status).toBe(401);
   });
 
   it("returns 400 when owner/repo missing", async () => {
-    authMock.mockResolvedValue({ accessToken: "t", user: { name: "alice" } });
+    serverAuthMock.mockResolvedValue({ accessToken: "t", userId: "123" });
     const res = await GET(req("http://x/api/snapshots"));
     expect(res.status).toBe(400);
   });
 
   it("returns 503 when no D1 binding is available", async () => {
-    authMock.mockResolvedValue({ accessToken: "t", user: { name: "alice" } });
+    serverAuthMock.mockResolvedValue({ accessToken: "t", userId: "123" });
     getD1Mock.mockResolvedValue(null);
     const res = await GET(req("http://x/api/snapshots?owner=o&repo=r"));
     expect(res.status).toBe(503);
   });
 
   it("returns merged history from D1 within the default window", async () => {
-    authMock.mockResolvedValue({ accessToken: "t", user: { name: "alice" } });
+    serverAuthMock.mockResolvedValue({ accessToken: "t", userId: "123" });
     const all = vi.fn().mockResolvedValue({
       results: [
         { day: "2026-06-01", metric: "views", count: 10, uniques: 4 },
@@ -59,7 +61,7 @@ describe("GET /api/snapshots", () => {
   });
 
   it("honors explicit from/to query params", async () => {
-    authMock.mockResolvedValue({ accessToken: "t", user: { name: "alice" } });
+    serverAuthMock.mockResolvedValue({ accessToken: "t", userId: "123" });
     const all = vi.fn().mockResolvedValue({ results: [] });
     const bind = vi.fn().mockReturnValue({ all });
     getD1Mock.mockResolvedValue({ prepare: vi.fn().mockReturnValue({ bind }) });
@@ -68,6 +70,6 @@ describe("GET /api/snapshots", () => {
       req("http://x/api/snapshots?owner=o&repo=r&from=2026-01-01&to=2026-02-01")
     );
     expect(res.status).toBe(200);
-    expect(bind).toHaveBeenCalledWith("alice", "o", "r", "2026-01-01", "2026-02-01");
+    expect(bind).toHaveBeenCalledWith("123", "o", "r", "2026-01-01", "2026-02-01");
   });
 });

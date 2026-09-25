@@ -9,7 +9,6 @@
 <!-- ![GitHub Traffic Analytics](assets/hero.png) -->
 
 [![CI](https://github.com/aliammari1/github-traffic-analytics/actions/workflows/ci.yml/badge.svg)](https://github.com/aliammari1/github-traffic-analytics/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/aliammari1/github-traffic-analytics/actions/workflows/codeql.yml/badge.svg)](https://github.com/aliammari1/github-traffic-analytics/actions/workflows/codeql.yml)
 [![codecov](https://codecov.io/gh/aliammari1/github-traffic-analytics/branch/main/graph/badge.svg)](https://codecov.io/gh/aliammari1/github-traffic-analytics)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/)
@@ -58,7 +57,7 @@ host the app) is being extracted as **Wave 2** — ⭐ to follow along.
 > **GitHub's traffic API only returns the last 14 days.** That's a hard limit on
 > GitHub's side. This app works around it by writing a **daily snapshot** of each
 > tracked repo's traffic to a database, so your history accumulates indefinitely
-> from the day you enable tracking. Live (un-tracked) data is still capped at 14 days.
+> from the day you enable tracking. Live (untracked) data is still capped at 14 days.
 
 ## What it does
 

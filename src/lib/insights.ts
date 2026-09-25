@@ -50,7 +50,9 @@ function objectArray<T extends z.ZodTypeAny>(item: T, cap?: number) {
   return z.preprocess(
     (value) => {
       if (!Array.isArray(value)) return [];
-      const objects = value.filter((entry) => !!entry && typeof entry === "object");
+      const objects = value.filter((entry) => {
+        return !!entry && typeof entry === "object" && !Array.isArray(entry);
+      });
       return cap ? objects.slice(0, cap) : objects;
     },
     z.array(item)
@@ -66,7 +68,7 @@ const payloadSchema = z.object({
   totalStars: safeNumber,
   topReferrers: objectArray(referrerSchema, 10),
   topPaths: objectArray(pathSchema, 10),
-  daily: objectArray(dailyPointSchema),
+  daily: objectArray(dailyPointSchema, 14),
 });
 
 export type DailyPoint = z.infer<typeof dailyPointSchema>;

@@ -7,7 +7,7 @@ pre-commit:
       glob: "*.{ts,tsx,js,mjs}"
       run: pnpm eslint {staged_files}
     format:
-      glob: "*.{ts,tsx,json,css,md}"
+      glob: "*.{ts,tsx,json,css,md,mdx,mjs,yml,yaml}"
       run: pnpm prettier --check {staged_files}
 
 pre-push:

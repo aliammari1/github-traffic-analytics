@@ -102,8 +102,9 @@ export async function getHistory(
 }
 
 /**
- * Sum total accumulated views (across all tracked owners) for a public repo —
- * the figure the embeddable README badge renders. Counts only the `views` metric.
+ * Sum total accumulated views for a public repo — the figure the embeddable
+ * README badge renders. Multiple users may track the same repository, so first
+ * deduplicate identical repo/day snapshots with MAX(count), then sum by day.
  * Returns 0 when the repo has no snapshots yet.
  */
 export async function getTotalViews(
@@ -113,9 +114,13 @@ export async function getTotalViews(
   const { repoOwner, repoName } = args;
   const { results } = await db
     .prepare(
-      `SELECT COALESCE(SUM(count), 0) AS total
-         FROM traffic_snapshots
-        WHERE repo_owner = ? AND repo_name = ? AND metric = 'views'`
+      `SELECT COALESCE(SUM(day_count), 0) AS total
+         FROM (
+           SELECT day, MAX(count) AS day_count
+             FROM traffic_snapshots
+            WHERE repo_owner = ? AND repo_name = ? AND metric = 'views'
+            GROUP BY day
+         )`
     )
     .bind(repoOwner, repoName)
     .all<{ total: number }>();

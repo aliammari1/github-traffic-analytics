@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
+import { server, http, HttpResponse } from "@/test/msw";
 
 const getD1Mock = vi.fn();
 const limitMock = vi.fn().mockResolvedValue({ success: true });
@@ -20,6 +21,11 @@ function req(url: string) {
 
 describe("GET /api/badge", () => {
   beforeEach(() => {
+    server.use(
+      http.get("https://api.github.com/repos/:owner/:repo", () =>
+        HttpResponse.json({ private: false })
+      )
+    );
     getD1Mock.mockReset();
     limitMock.mockReset().mockResolvedValue({ success: true });
     getRateLimiterMock
@@ -46,6 +52,21 @@ describe("GET /api/badge", () => {
     const res = await GET(req("http://x/api/badge?owner=o&repo=r"));
     const body = await res.text();
     expect(body).toContain("no data");
+  });
+
+  it("does not expose traffic for private or nonexistent repositories", async () => {
+    server.use(
+      http.get(
+        "https://api.github.com/repos/:owner/:repo",
+        () => new HttpResponse(null, { status: 404 })
+      )
+    );
+    const prepare = vi.fn();
+    getD1Mock.mockResolvedValue({ prepare });
+
+    const res = await GET(req("http://x/api/badge?owner=o&repo=private-r"));
+    expect(await res.text()).toContain("no data");
+    expect(prepare).not.toHaveBeenCalled();
   });
 
   it("renders the summed view count from D1", async () => {
@@ -84,6 +105,7 @@ describe("GET /api/badge", () => {
     expect(res.status).toBe(200);
     const body = await res.text();
     expect(body).toContain("rate limited");
+    expect(res.headers.get("Cache-Control")).toBe("private, no-store");
   });
 
   it("renders 'error' when the query throws", async () => {

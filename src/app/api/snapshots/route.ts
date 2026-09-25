@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-import { auth } from "@/lib/auth";
+import { getServerAuth } from "@/lib/server-auth";
 import { getD1 } from "@/lib/d1";
 import { getHistory, mergeHistory } from "@/lib/snapshots";
 import { NextRequest, NextResponse } from "next/server";
@@ -16,8 +16,8 @@ import { NextRequest, NextResponse } from "next/server";
  *   - 503 when no D1 binding is available (e.g. running on plain Node).
  */
 export async function GET(request: NextRequest) {
-  const session = await auth();
-  if (!session?.accessToken || !session.user?.name) {
+  const serverAuth = await getServerAuth(request);
+  if (!serverAuth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
   const rows = await getHistory(db, {
-    ownerLogin: session.user.name,
+    ownerLogin: serverAuth.userId,
     repoOwner,
     repoName,
     fromDay,

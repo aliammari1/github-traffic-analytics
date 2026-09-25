@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-import { auth } from "@/lib/auth";
+import { getServerAuth } from "@/lib/server-auth";
 import { GitHubService, TrafficAccessError } from "@/lib/github";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -18,9 +18,9 @@ import { NextRequest, NextResponse } from "next/server";
  *            - 500 for other failures.
  */
 export async function GET(request: NextRequest) {
-  const session = await auth();
+  const serverAuth = await getServerAuth(request);
 
-  if (!session?.accessToken) {
+  if (!serverAuth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const githubService = new GitHubService(session.accessToken);
+    const githubService = new GitHubService(serverAuth.accessToken);
 
     const [views, clones, referrers, paths] = await Promise.all([
       githubService.getTrafficViews(owner, repo),

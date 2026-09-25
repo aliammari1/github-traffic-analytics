@@ -147,7 +147,7 @@ export default function TrafficPage() {
         totalClones,
         totalCloneUniques,
         totalStars,
-        repoCount: repos.length,
+        repoCount: accessibleRepos.length,
         viewsData: Object.entries(viewsMap)
           .map(([date, data]) => ({ date, ...data }))
           .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
