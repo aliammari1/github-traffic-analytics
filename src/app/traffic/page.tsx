@@ -55,12 +55,6 @@ export default function TrafficPage() {
     }
   }, [status, router]);
 
-  useEffect(() => {
-    if (session) {
-      fetchData();
-    }
-  }, [session]);
-
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -160,6 +154,12 @@ export default function TrafficPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (session) {
+      fetchData();
+    }
+  }, [session]);
 
   if (status === "loading" || loading) {
     return (

@@ -47,16 +47,13 @@ const pathSchema = z.object({
 
 /** Drop non-object array entries before parsing, then cap the list length. */
 function objectArray<T extends z.ZodTypeAny>(item: T, cap?: number) {
-  return z.preprocess(
-    (value) => {
-      if (!Array.isArray(value)) return [];
-      const objects = value.filter((entry) => {
-        return !!entry && typeof entry === "object" && !Array.isArray(entry);
-      });
-      return cap ? objects.slice(0, cap) : objects;
-    },
-    z.array(item)
-  );
+  return z.preprocess((value) => {
+    if (!Array.isArray(value)) return [];
+    const objects = value.filter((entry) => {
+      return !!entry && typeof entry === "object" && !Array.isArray(entry);
+    });
+    return cap ? objects.slice(0, cap) : objects;
+  }, z.array(item));
 }
 
 const payloadSchema = z.object({

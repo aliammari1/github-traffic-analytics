@@ -8,6 +8,7 @@ pre-commit:
       run: pnpm eslint {staged_files}
     format:
       glob: "*.{ts,tsx,json,css,md,mdx,mjs,yml,yaml}"
+      exclude: "pnpm-lock.yaml"
       run: pnpm prettier --check {staged_files}
 
 pre-push:

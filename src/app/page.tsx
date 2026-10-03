@@ -7,7 +7,8 @@ import { Repository } from "@/lib/github";
 import RepositorySelector from "@/components/RepositorySelector";
 import TrafficDashboard from "@/components/TrafficDashboard";
 import { Button } from "@/components/ui/button";
-import { Github, TrendingUp, Eye, GitFork, ArrowRight, BarChart3, Zap, Lock } from "lucide-react";
+import { TrendingUp, Eye, GitFork, ArrowRight, BarChart3, Zap, Lock } from "lucide-react";
+import { Github } from "lucide-brands";
 
 /**
  * Render the application's homepage and control UI flow based on authentication and repository selection.

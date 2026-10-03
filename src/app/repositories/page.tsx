@@ -32,12 +32,6 @@ export default function RepositoriesPage() {
     }
   }, [status, router]);
 
-  useEffect(() => {
-    if (session) {
-      fetchRepositories();
-    }
-  }, [session]);
-
   const fetchRepositories = async () => {
     try {
       setLoading(true);
@@ -51,6 +45,12 @@ export default function RepositoriesPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (session) {
+      fetchRepositories();
+    }
+  }, [session]);
 
   const filteredRepos = repositories.filter((repo) => {
     if (filter === "owned") return repo.owner.login === session?.user?.name;

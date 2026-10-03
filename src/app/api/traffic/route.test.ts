@@ -18,7 +18,9 @@ vi.mock("@/lib/github", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/github")>();
   return {
     ...actual,
-    GitHubService: vi.fn(() => serviceMock),
+    GitHubService: vi.fn(function () {
+      return serviceMock;
+    }),
   };
 });
 

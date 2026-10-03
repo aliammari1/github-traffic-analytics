@@ -27,10 +27,6 @@ export default function RepositorySelector({ onRepositorySelect }: RepositorySel
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchRepositories();
-  }, []);
-
   const fetchRepositories = async () => {
     try {
       const response = await fetch("/api/repositories");
@@ -45,6 +41,10 @@ export default function RepositorySelector({ onRepositorySelect }: RepositorySel
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchRepositories();
+  }, []);
 
   if (loading) {
     return (

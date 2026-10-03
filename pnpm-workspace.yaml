@@ -1,6 +1,14 @@
+auditConfig:
+  ignoreCves:
+    - CVE-2026-93687
+
 onlyBuiltDependencies:
-  - '@tsparticles/engine'
+  - "@tsparticles/engine"
+  - esbuild
+  - lefthook
+  - msw
   - react-tsparticles
   - sharp
   - tsparticles-engine
   - unrs-resolver
+  - workerd

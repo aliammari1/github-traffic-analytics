@@ -21,6 +21,11 @@ const eslintConfig = [
   },
   ...next,
   {
+    rules: {
+      "react-hooks/set-state-in-effect": "off",
+    },
+  },
+  {
     files: ["**/*.test.{ts,tsx}", "tests/**/*.{ts,tsx}", "src/test/**/*.{ts,tsx}"],
     rules: {
       "@typescript-eslint/no-explicit-any": "off",

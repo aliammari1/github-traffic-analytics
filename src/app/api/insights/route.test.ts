@@ -7,9 +7,11 @@ vi.mock("@/lib/auth", () => ({ auth: () => authMock() }));
 
 const streamMessage = vi.fn();
 vi.mock("@anthropic-ai/sdk", () => ({
-  default: vi.fn(() => ({
-    messages: { stream: (...a: unknown[]) => streamMessage(...a) },
-  })),
+  default: vi.fn(function () {
+    return {
+      messages: { stream: (...a: unknown[]) => streamMessage(...a) },
+    };
+  }),
 }));
 
 import { POST } from "./route";

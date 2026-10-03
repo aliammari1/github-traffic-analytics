@@ -12,7 +12,9 @@ vi.mock("@/lib/github", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/github")>();
   return {
     ...actual,
-    GitHubService: vi.fn(() => ({ getRepositories })),
+    GitHubService: vi.fn(function () {
+      return { getRepositories };
+    }),
   };
 });
 

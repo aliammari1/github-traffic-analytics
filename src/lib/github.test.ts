@@ -14,17 +14,19 @@ const mocks = {
 // beforeEach is enough — the global afterEach `restoreAllMocks` doesn't strip a
 // module-factory mock, but we keep the wiring here for clarity and isolation.
 vi.mock("@octokit/rest", () => ({
-  Octokit: vi.fn(() => ({
-    rest: {
-      repos: {
-        listForAuthenticatedUser: (...a: unknown[]) => mocks.listForAuthenticatedUser(...a),
-        getViews: (...a: unknown[]) => mocks.getViews(...a),
-        getClones: (...a: unknown[]) => mocks.getClones(...a),
-        getTopReferrers: (...a: unknown[]) => mocks.getTopReferrers(...a),
-        getTopPaths: (...a: unknown[]) => mocks.getTopPaths(...a),
+  Octokit: vi.fn(function () {
+    return {
+      rest: {
+        repos: {
+          listForAuthenticatedUser: (...a: unknown[]) => mocks.listForAuthenticatedUser(...a),
+          getViews: (...a: unknown[]) => mocks.getViews(...a),
+          getClones: (...a: unknown[]) => mocks.getClones(...a),
+          getTopReferrers: (...a: unknown[]) => mocks.getTopReferrers(...a),
+          getTopPaths: (...a: unknown[]) => mocks.getTopPaths(...a),
+        },
       },
-    },
-  })),
+    };
+  }),
 }));
 
 import { GitHubService, TrafficAccessError } from "./github";
