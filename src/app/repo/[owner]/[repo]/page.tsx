@@ -31,8 +31,10 @@ import StarHistoryChart from "@/components/StarHistoryChart";
 import ShareActions from "@/components/ShareActions";
 import HistoricalTraffic from "@/components/HistoricalTraffic";
 import InsightsPanel from "@/components/InsightsPanel";
+import AnomalyList from "@/components/AnomalyList";
 import type { PublicRepoAnalysis } from "@/lib/github-public";
 import { calculateReleaseImpact } from "@/lib/analytics";
+import { detectGrowthAnomalies } from "@/lib/anomalies";
 import {
   LineChart,
   Line,
@@ -90,6 +92,30 @@ export default function RepositoryAnalyticsPage({
       impact: calculateReleaseImpact(starHistory, rel),
     }));
   }, [releases, starHistory]);
+
+  const anomalies = useMemo(
+    () =>
+      detectGrowthAnomalies(
+        {
+          stars: starHistory,
+          views: hasPrivateAccess
+            ? privateTraffic?.views.views.map((point) => ({
+                day: point.timestamp.slice(0, 10),
+                count: point.count,
+              }))
+            : undefined,
+          clones: hasPrivateAccess
+            ? privateTraffic?.clones.clones.map((point) => ({
+                day: point.timestamp.slice(0, 10),
+                count: point.count,
+              }))
+            : undefined,
+          releases,
+        },
+        new Date(mountTime)
+      ),
+    [starHistory, releases, hasPrivateAccess, privateTraffic, mountTime]
+  );
 
   // 1. Fetch public analysis with cancellation flag to prevent race conditions
   useEffect(() => {
@@ -431,6 +457,8 @@ export default function RepositoryAnalyticsPage({
               </ul>
             </CardContent>
           </Card>
+
+          <AnomalyList anomalies={anomalies} privateTrafficAvailable={hasPrivateAccess} />
 
           <ShareActions owner={owner} repo={repo} currentStars={analysis.repository.starsCount} />
 
