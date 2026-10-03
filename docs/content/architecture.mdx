@@ -9,14 +9,14 @@ GitHub OAuth ──► NextAuth (session + access token)
                       │
    Browser ──► Next.js App (Cloudflare Pages via @opennextjs/cloudflare)
                       │
-        ┌─────────────┼─────────────────────────────┐
-        ▼             ▼                             ▼
-  /api/repositories  /api/traffic               /api/insights
-  /api/snapshots     (Octokit → GitHub)         (Anthropic Messages API,
-  /api/track              │                       claude-haiku-4-5)
-        │                 │
-        ▼                 │
-     D1 (traffic_snapshots, tracked_repos)
+        ┌─────────────┼─────────────────────────────┬──────────────────────────┐
+        ▼             ▼                             ▼                          ▼
+  /api/repositories  /api/traffic               /api/insights             /api/public/repo
+  /api/snapshots     (Octokit → GitHub)         (Deterministic metrics    (Public GitHub API +
+  /api/track              │                      + Anthropic Messages API) Star History & Releases)
+        │                 │                                                    │
+        ▼                 │                                                    ▼
+     D1 (traffic_snapshots, tracked_repos)                         Edge Memory Cache (5m TTL)
         ▲
         │ daily upsert
   Cron Worker (worker/snapshot.ts, Cron Trigger 06:00 UTC)
@@ -24,20 +24,30 @@ GitHub OAuth ──► NextAuth (session + access token)
 
 ## Key modules
 
-| Path | Responsibility |
-| --- | --- |
-| `src/lib/github.ts` | Octokit wrapper; throws a typed `TrafficAccessError` on 403 (English messages) |
-| `src/lib/insights.ts` | Validate/aggregate the traffic payload and build the AI prompt |
-| `src/lib/snapshots.ts` | D1 upsert + history query helpers (framework-free, unit-tested) |
-| `src/lib/d1.ts` | Resolves the D1 binding at runtime (null off-Cloudflare) |
-| `worker/snapshot.ts` | The daily Cron Worker |
+| Path                       | Responsibility                                                                                                                                     |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/analytics.ts`     | Pure TypeScript deterministic growth calculations (moving averages, star velocity, traffic spike detection, percentage changes, change highlights) |
+| `src/lib/github-public.ts` | Zero-auth GitHub REST API service with in-memory caching for metadata, stargazers trajectory, and releases                                         |
+| `src/lib/github.ts`        | Authenticated Octokit wrapper; throws typed `TrafficAccessError` on 403 (English messages)                                                         |
+| `src/lib/insights.ts`      | Validate/aggregate traffic telemetry into structured prompts for Anthropic Claude                                                                  |
+| `src/lib/snapshots.ts`     | D1 upsert + history query helpers (framework-free, unit-tested)                                                                                    |
+| `src/lib/d1.ts`            | Resolves the D1 binding at runtime (null off-Cloudflare)                                                                                           |
+| `worker/snapshot.ts`       | The daily Cron Worker writing long-term snapshots                                                                                                  |
+
+## Decoupled Core for Future Surfaces
+
+A central architectural goal of the growth intelligence overhaul is **surface independence**:
+
+1. **Pure Domain Logic:** `src/lib/analytics.ts` and `src/lib/github-public.ts` have zero browser or Next.js framework dependencies. They accept pure data models and return pure typed results.
+2. **Future CLI Extension (`gh traffic`):** When building the `gh` CLI extension, it can import `src/lib/analytics.ts` directly or call `/api/public/repo` to display ASCII charts, velocity metrics, and change highlights in developer terminals.
+3. **GitHub Action:** A standalone Action workflow can evaluate `calculateStarVelocity` and `detectTrafficSpikes` from repository telemetry to fail CI or post markdown summaries to PR comments or discussions.
+4. **Model Context Protocol (MCP):** An MCP server can expose tools like `analyze_repo_growth` and `explain_repo_changes` using the deterministic analytics functions as ground-truth inputs before passing to LLM clients.
 
 ## Engineering decisions
 
-- **Cloudflare over Vercel:** Pages + D1 + Cron Triggers are a single free-tier
-  platform that natively supports the snapshot feature (the headline value-add).
+- **Deterministic Metrics Before LLMs:** We compute percentage changes, moving averages, run rates, and anomaly multipliers in TypeScript first. The LLM only explains verified, already-computed statistics.
+- **Graceful Unauthenticated Degradation:** Public analysis routes degrade gracefully on rate limits (429) and missing data instead of failing the page.
+- **Cloudflare over Vercel:** Pages + D1 + Cron Triggers are a single platform natively supporting the snapshot feature (the headline value-add).
 - **pnpm over Bun:** reproducible lockfile + first-class `pnpm/action-setup` in CI.
 - **ESLint CLI over `next lint`:** `next lint` was removed in Next 16.
-- **Typed error over string matching:** the 403 path uses `TrafficAccessError`
-  rather than matching a localized message, so the original French-vs-English bug
-  can't recur.
+- **Typed error over string matching:** the 403 path uses `TrafficAccessError` rather than matching a localized message, so the original French-vs-English bug can't recur.

@@ -1,5 +1,9 @@
-// SPDX-License-Identifier: MIT
+import fs from "node:fs";
 import { defineConfig, devices } from "@playwright/test";
+
+const systemChromium = ["/usr/bin/chromium", "/usr/bin/google-chrome"].find((p) =>
+  fs.existsSync(p)
+);
 
 /**
  * Playwright e2e config. The dev server is started by Playwright; OAuth, Octokit
@@ -16,7 +20,17 @@ export default defineConfig({
     baseURL: "http://localhost:3000",
     trace: "on-first-retry",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    {
+      name: "chromium",
+      use: {
+        ...devices["Desktop Chrome"],
+        launchOptions: {
+          ...(process.env.CI || !systemChromium ? {} : { executablePath: systemChromium }),
+        },
+      },
+    },
+  ],
   webServer: {
     command: "pnpm dev",
     url: "http://localhost:3000",
