@@ -7,7 +7,7 @@ title: Architecture
 ```
 GitHub OAuth ──► NextAuth (session + access token)
                       │
-   Browser ──► Next.js App (Cloudflare Pages via @opennextjs/cloudflare)
+   Browser ──► Next.js App (Cloudflare Workers via @opennextjs/cloudflare)
                       │
         ┌─────────────┼─────────────────────────────┬──────────────────────────┐
         ▼             ▼                             ▼                          ▼
@@ -47,7 +47,7 @@ A central architectural goal of the growth intelligence overhaul is **surface in
 
 - **Deterministic Metrics Before LLMs:** We compute percentage changes, moving averages, run rates, and anomaly multipliers in TypeScript first. The LLM only explains verified, already-computed statistics.
 - **Graceful Unauthenticated Degradation:** Public analysis routes degrade gracefully on rate limits (429) and missing data instead of failing the page.
-- **Cloudflare over Vercel:** Pages + D1 + Cron Triggers are a single platform natively supporting the snapshot feature (the headline value-add).
+- **Cloudflare over Vercel:** Workers + D1 + Cron Triggers support the snapshot feature on one platform.
 - **pnpm over Bun:** reproducible lockfile + first-class `pnpm/action-setup` in CI.
 - **ESLint CLI over `next lint`:** `next lint` was removed in Next 16.
 - **Typed error over string matching:** the 403 path uses `TrafficAccessError` rather than matching a localized message, so the original French-vs-English bug can't recur.

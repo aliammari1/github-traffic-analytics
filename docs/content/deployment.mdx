@@ -4,16 +4,11 @@ title: Deployment
 
 # Deployment (Cloudflare)
 
-The app deploys to **Cloudflare Pages** via `@opennextjs/cloudflare`, with **D1**
+The app deploys to **Cloudflare Workers** via `@opennextjs/cloudflare`, with **D1**
 for snapshots and a separate **Cron Worker** for daily capture.
 
-## One-click deploy
-
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/aliammari1/github-traffic-analytics)
-
-The button clones the repo into your Cloudflare account and wires up the Worker.
-You still complete the D1 + secrets steps below (a database can't be provisioned by
-the button alone). For full control, follow the manual steps.
+Provision D1 and the required secrets before deploying. The separate docs site
+uses Cloudflare Pages; the application uses Workers.
 
 ## 1. Create the D1 database
 
@@ -25,9 +20,22 @@ wrangler d1 execute traffic_analytics --remote --file db/schema.sql
 
 ## 2. Build & deploy the app
 
+Set the production URL and OAuth callback in your GitHub OAuth App:
+
+```text
+Homepage: https://github-traffic-analytics.ali-ammari.workers.dev
+Callback: https://github-traffic-analytics.ali-ammari.workers.dev/api/auth/callback/github
+```
+
+Use your own Worker URL when deploying a fork. Set `NEXTAUTH_URL` to that URL,
+then add `NEXTAUTH_SECRET`, `GITHUB_CLIENT_ID`, and `GITHUB_CLIENT_SECRET` as
+Worker secrets with `wrangler secret put <NAME>`. `GITHUB_PUBLIC_TOKEN` and
+`ANTHROPIC_API_KEY` are optional server-side secrets. Keep all secret values out
+of source control.
+
 ```bash
 pnpm cf:build      # opennextjs-cloudflare build
-pnpm cf:deploy     # opennextjs-cloudflare deploy
+pnpm exec opennextjs-cloudflare deploy  # deploy the build above
 ```
 
 ## 3. Deploy the snapshot cron worker
@@ -37,18 +45,20 @@ wrangler deploy --config wrangler.snapshot.jsonc
 ```
 
 It runs daily at 06:00 UTC (`triggers.crons`).
+The Cron Worker uses the same D1 database. Users must opt in to tracking before
+it captures their repository traffic.
 
 ## CI deploy (gated)
 
 `.github/workflows/deploy.yml` deploys on push to `main`, but only when the
 repository variable `ENABLE_CF_DEPLOY` is `true` and these secrets are set:
 
-| Secret | |
-| --- | --- |
-| `CLOUDFLARE_API_TOKEN` | Cloudflare API token |
-| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare account id |
-| `NEXTAUTH_SECRET`, `NEXTAUTH_URL` | NextAuth |
-| `GH_OAUTH_CLIENT_ID`, `GH_OAUTH_CLIENT_SECRET` | GitHub OAuth |
-| `ANTHROPIC_API_KEY` | AI insights |
+| Secret                                         |                       |
+| ---------------------------------------------- | --------------------- |
+| `CLOUDFLARE_API_TOKEN`                         | Cloudflare API token  |
+| `CLOUDFLARE_ACCOUNT_ID`                        | Cloudflare account id |
+| `NEXTAUTH_SECRET`, `NEXTAUTH_URL`              | NextAuth              |
+| `GH_OAUTH_CLIENT_ID`, `GH_OAUTH_CLIENT_SECRET` | GitHub OAuth          |
+| `ANTHROPIC_API_KEY`                            | AI insights           |
 
 Without them the deploy job is skipped — forks and CI never attempt a deploy.

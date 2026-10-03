@@ -221,15 +221,17 @@ pnpm dev
 
 ## 🚢 Deployment
 
-### Deploy to Cloudflare Pages (Recommended)
+### Deploy to Cloudflare Workers
 
-This platform is designed to run completely on **Cloudflare's Free Tier**:
+The application runs on Cloudflare Workers with a D1 database:
 
-- **Pages**: Next.js 16 via `@opennextjs/cloudflare`
+- **Workers**: Next.js 16 via `@opennextjs/cloudflare`
 - **D1 Database**: Serverless SQLite for long-term daily snapshots
 - **Cron Worker**: Scheduled daily execution (`worker/snapshot.ts`)
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/aliammari1/github-traffic-analytics)
+Build with `pnpm cf:build`, then deploy with `pnpm exec opennextjs-cloudflare deploy`.
+Create D1, set Worker secrets, and deploy the separate snapshot Worker as described
+in the [deployment guide](docs/content/deployment.mdx).
 
 Detailed step-by-step setup guides can be found in [`docs/`](docs/).
 
