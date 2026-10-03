@@ -39,4 +39,20 @@ test.describe("Multi-Repository Growth Comparison", () => {
     // 5. Verify share button is available
     await expect(page.getByRole("button", { name: /Share Comparison/i })).toBeVisible();
   });
+
+  test("two-repository comparison exposes a README comparison card action", async ({ page }) => {
+    await page.route("**/api/auth/session", (route) => route.fulfill({ json: null }));
+    await page.route("**/api/public/repo**", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        json: MOCK_PUBLIC_ANALYSIS,
+      })
+    );
+
+    await page.goto("/compare?repos=vercel%2Fnext.js%2Cnuxt%2Fnuxt");
+
+    await expect(page.getByRole("button", { name: "Copy README card" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Share Comparison/i })).toBeVisible();
+  });
 });

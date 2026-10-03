@@ -121,6 +121,12 @@ Turn a release window into a public report that compares 14 days before vs. 14 d
 
 Compare between 2 and 4 repositories simultaneously. Trajectories are visualized side-by-side with shareable URL state (`/compare?repos=vercel/next.js,nuxt/nuxt,sveltejs/svelte`).
 
+For two repositories, copy an embeddable comparison card directly from the Compare page:
+
+```markdown
+[![Repository growth comparison](https://github-traffic-analytics.ali-ammari.workers.dev/api/card/compare?a=vercel%2Fnext.js&b=nuxt%2Fnuxt)](https://github-traffic-analytics.ali-ammari.workers.dev/compare?repos=vercel%2Fnext.js%2Cnuxt%2Fnuxt)
+```
+
 ### 5. Long-Term Traffic Retention (Bypassing GitHub's 14-Day Limit)
 
 GitHub deletes traffic metrics (views, clones, referrers, and paths) after 14 days. When repository owners authenticate and enable tracking, an automated daily Cloudflare Cron Worker saves snapshots into Cloudflare **D1**, archiving your traffic history indefinitely.

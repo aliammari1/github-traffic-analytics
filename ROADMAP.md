@@ -40,6 +40,7 @@ More legitimate GitHub stars & organic adoption
 - [x] **Release event timeline & impact**: Temporal association analysis comparing 14 days before vs. 14 days after release events with strictly non-causal language.
 - [x] **Shareable launch reports (`/launch/[owner]/[repo]?tag=...`)**: Public before/after release reports with deterministic velocity deltas, a marked star trajectory, and share/copy actions.
 - [x] **Multi-repository comparison (`/compare`)**: Side-by-side growth trajectory comparison supporting 2–4 repositories with shareable URL state (`?repos=owner/repo,owner2/repo2`).
+- [x] **Embeddable two-repository comparison card (`/api/card/compare`)**: README-safe SVG comparing total stars, 7-day growth, 30-day growth, and weekly velocity for two public repositories.
 - [x] **Embeddable README growth cards (`/api/card/[owner]/[repo]`)**: Zero-dependency SVG cards with metric and `?style=sparkline` variants, multiple themes (`github-dark`, `github-light`, `transparent`, `dracula`, `nord`, `catppuccin`), and one-click "Copy Markdown" actions.
 - [x] **Dynamic OpenGraph social cards (`/repo/[owner]/[repo]/opengraph-image`)**: Native Next.js 16 Edge OpenGraph and Twitter cards for rich unfurls on X, LinkedIn, Discord, and Slack.
 - [x] **Contextual AI explanations**: Structured LLM insights (`claude-haiku-4-5`) explaining precomputed telemetry without hallucinating math.
@@ -58,7 +59,6 @@ High-leverage features that turn existing users into discovery channels:
 
 - [ ] **Growth milestone alerts via webhooks**: Automated Discord / Slack webhook notifications when a repository crosses major star milestones (e.g., 1k, 5k, 10k stars) or detects growth acceleration.
 - [ ] **Sharable growth milestone certificates**: Single-click exportable social assets celebrating repository velocity milestones.
-- [ ] **Embeddable comparison widget**: Compact SVG comparison badge comparing two rival open-source tools (`/api/badge/compare?a=vercel/next.js&b=nuxt/nuxt`).
 
 ---
 
