@@ -581,7 +581,11 @@ export default function RepositoryAnalyticsPage({
                 <HistoricalTraffic owner={owner} repo={repo} />
               </div>
             ) : (
-              <PrivateUnlockCard session={session} featureName="traffic analytics" />
+              <PrivateUnlockCard
+                session={session}
+                featureName="traffic analytics"
+                isLoading={privateLoading}
+              />
             )}
           </div>
         )}
@@ -620,7 +624,11 @@ export default function RepositoryAnalyticsPage({
                 </CardContent>
               </Card>
             ) : (
-              <PrivateUnlockCard session={session} featureName="referral sources" />
+              <PrivateUnlockCard
+                session={session}
+                featureName="referral sources"
+                isLoading={privateLoading}
+              />
             )}
           </div>
         )}
@@ -664,7 +672,11 @@ export default function RepositoryAnalyticsPage({
                 </CardContent>
               </Card>
             ) : (
-              <PrivateUnlockCard session={session} featureName="popular content metrics" />
+              <PrivateUnlockCard
+                session={session}
+                featureName="popular content metrics"
+                isLoading={privateLoading}
+              />
             )}
           </div>
         )}
@@ -812,7 +824,11 @@ export default function RepositoryAnalyticsPage({
                 }}
               />
             ) : (
-              <PrivateUnlockCard session={session} featureName="contextual AI growth insights" />
+              <PrivateUnlockCard
+                session={session}
+                featureName="contextual AI growth insights"
+                isLoading={privateLoading}
+              />
             )}
           </div>
         )}
@@ -824,10 +840,20 @@ export default function RepositoryAnalyticsPage({
 function PrivateUnlockCard({
   session,
   featureName,
+  isLoading,
 }: {
   session: { user?: { name?: string | null } } | null;
   featureName: string;
+  isLoading?: boolean;
 }) {
+  if (isLoading) {
+    return (
+      <div className="flex h-48 items-center justify-center">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
   return (
     <Card className="border-border bg-card/60 max-w-xl mx-auto text-center p-8 my-12">
       <div className="inline-flex p-3 rounded-full bg-secondary/50 text-muted-foreground mb-4">
