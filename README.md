@@ -3,7 +3,7 @@
 
 # GitHub Traffic Analytics
 
-### Self-hosted, open-source GitHub repo analytics — keep your traffic, clones, and stars forever (GitHub deletes them after 14 days). A free Repobeats / star-history alternative.
+### See what is driving your GitHub repository's growth, preserve the analytics GitHub deletes after 14 days, and understand what changed. A developer-native growth intelligence platform.
 
 <!-- Banner committed under assets/ — generate per BANNER.md (dark-tech charts), then uncomment. -->
 <!-- ![GitHub Traffic Analytics](assets/hero.png) -->
@@ -41,15 +41,17 @@ host the app) is being extracted as **Wave 2** — ⭐ to follow along.
 
 ## GitHub Traffic Analytics vs the alternatives
 
-| | **GitHub Traffic Analytics** | GitHub's built-in Insights | Repobeats | star-history |
-| --- | :---: | :---: | :---: | :---: |
-| Keeps traffic/clones past 14 days | ✅ forever | ❌ 14-day window | ❌ image only | n/a |
-| Self-hosted / own your data | ✅ | n/a | ❌ hosted SaaS | ❌ hosted |
-| Price | **$0** (CF free tier) | free | free/paid tiers | free |
-| Embeddable README badge | ✅ live SVG | ❌ | ✅ | ✅ (stars only) |
-| Star history | ✅ | ❌ | ➖ | ✅ |
-| AI traffic summary | ✅ | ❌ | ❌ | ❌ |
-| Open source (MIT) | ✅ | ❌ | ❌ | ✅ |
+|                                       | **GitHub Traffic Analytics**  | GitHub's built-in Insights |    Repobeats    |  star-history   |
+| ------------------------------------- | :---------------------------: | :------------------------: | :-------------: | :-------------: |
+| Keeps traffic/clones past 14 days     | ✅ forever (via D1 snapshots) |      ❌ 14-day window      |  ❌ image only  |       n/a       |
+| Public repository analysis (no login) |              ✅               |     ❌ login required      |       ❌        |       ✅        |
+| Self-hosted / own your data           |              ✅               |            n/a             | ❌ hosted SaaS  |    ❌ hosted    |
+| Price                                 |     **$0** (CF free tier)     |            free            | free/paid tiers |      free       |
+| Embeddable README badge               |          ✅ live SVG          |             ❌             |       ✅        | ✅ (stars only) |
+| Star history & velocity               |              ✅               |             ❌             |       ➖        |       ✅        |
+| Release event correlation             |              ✅               |             ❌             |       ❌        |       ❌        |
+| Contextual AI explanation             |              ✅               |             ❌             |       ❌        |       ❌        |
+| Open source (MIT)                     |              ✅               |             ❌             |       ❌        |       ✅        |
 
 ---
 
@@ -61,13 +63,19 @@ host the app) is being extracted as **Wave 2** — ⭐ to follow along.
 
 ## What it does
 
-- **Traffic dashboard** — views, clones, top referrers, and popular paths per repo.
-- **Historical traffic** — daily snapshots persisted to Cloudflare **D1** via a
-  **Cron Worker**, so you see the full timeline beyond GitHub's 14-day window.
-- **AI insights** — a "Summarize my traffic" panel that calls the Anthropic
-  Messages API (`claude-haiku-4-5`) over your aggregated traffic and returns an
-  actionable growth briefing.
-- **Aggregated overview** — totals across all your repositories.
+- **Public repository analysis** — instantly analyze any public GitHub repository
+  (`owner/repo` or full URL) without logging in. View star history trajectory, star
+  velocity (7d/30d), and release event timeline.
+- **Traffic dashboard & 14-day limit bypass** — views, clones, top referrers, and
+  popular paths per repo. Daily snapshots persisted to Cloudflare **D1** via a
+  **Cron Worker** maintain history beyond GitHub's 14-day window.
+- **Deterministic analytics & "What Changed"** — statistical engine computing
+  percentage change, moving averages, traffic spikes, and star velocity before
+  displaying raw charts.
+- **Contextual AI insights** — an "Explain this change" briefing using the Anthropic
+  Messages API (`claude-haiku-4-5`) explaining pre-computed deterministic metrics.
+- **Progressive disclosure** — public metrics accessible to anyone; verified repository
+  owners unlock private views, clones, referrers, and long-term retention.
 
 ## Quickstart
 
@@ -92,28 +100,28 @@ exposed to the client.
 
 ### Environment variables
 
-| Variable | Required | Description |
-| --- | --- | --- |
-| `NEXTAUTH_SECRET` | yes | NextAuth session secret (`openssl rand -base64 32`) |
-| `NEXTAUTH_URL` | yes | App URL (`http://localhost:3000` locally) |
-| `GITHUB_CLIENT_ID` | yes | GitHub OAuth App client id |
-| `GITHUB_CLIENT_SECRET` | yes | GitHub OAuth App client secret |
-| `ANTHROPIC_API_KEY` | no | Enables the AI insights panel; the panel degrades gracefully if unset |
+| Variable               | Required | Description                                                           |
+| ---------------------- | -------- | --------------------------------------------------------------------- |
+| `NEXTAUTH_SECRET`      | yes      | NextAuth session secret (`openssl rand -base64 32`)                   |
+| `NEXTAUTH_URL`         | yes      | App URL (`http://localhost:3000` locally)                             |
+| `GITHUB_CLIENT_ID`     | yes      | GitHub OAuth App client id                                            |
+| `GITHUB_CLIENT_SECRET` | yes      | GitHub OAuth App client secret                                        |
+| `ANTHROPIC_API_KEY`    | no       | Enables the AI insights panel; the panel degrades gracefully if unset |
 
 > `next build` needs these present. For CI builds without real credentials, dummy
 > values are sufficient (the build doesn't call the providers).
 
 ## Scripts
 
-| Command | Description |
-| --- | --- |
-| `pnpm dev` | Dev server (Turbopack) |
-| `pnpm lint` | ESLint (`next lint` was removed in Next 16 → ESLint CLI) |
-| `pnpm typecheck` | `tsc --noEmit` |
-| `pnpm test` / `pnpm test:coverage` | Vitest unit/component tests (80% coverage gate) |
-| `pnpm test:e2e` | Playwright e2e (sign-in → select repo → view traffic, MSW-mocked) |
-| `pnpm build` | Production build |
-| `pnpm cf:build` / `pnpm cf:deploy` | Build/deploy for Cloudflare via `@opennextjs/cloudflare` |
+| Command                            | Description                                                       |
+| ---------------------------------- | ----------------------------------------------------------------- |
+| `pnpm dev`                         | Dev server (Turbopack)                                            |
+| `pnpm lint`                        | ESLint (`next lint` was removed in Next 16 → ESLint CLI)          |
+| `pnpm typecheck`                   | `tsc --noEmit`                                                    |
+| `pnpm test` / `pnpm test:coverage` | Vitest unit/component tests (80% coverage gate)                   |
+| `pnpm test:e2e`                    | Playwright e2e (sign-in → select repo → view traffic, MSW-mocked) |
+| `pnpm build`                       | Production build                                                  |
+| `pnpm cf:build` / `pnpm cf:deploy` | Build/deploy for Cloudflare via `@opennextjs/cloudflare`          |
 
 ## Tech stack
 
@@ -150,7 +158,7 @@ GitHub's traffic API is a sliding 14-day window — older data is gone forever.
 The fix is unglamorous and reliable: a **daily Cloudflare Cron Worker** snapshots
 each tracked repo's views/clones into **D1**, so history accumulates indefinitely
 from day one of tracking. Write-up:
-[*How I beat GitHub's 14-day traffic limit*](docs/) (Architecture → Daily snapshots).
+[_How I beat GitHub's 14-day traffic limit_](docs/) (Architecture → Daily snapshots).
 
 ## Engineering decisions
 

@@ -4,18 +4,39 @@ title: Features
 
 # Features
 
-## Traffic dashboard
+## Public repository analysis (zero authentication required)
+
+Analyze any public GitHub repository directly by owner and name or full repository URL.
+Provides instant visibility into community velocity, star growth history, and release timelines
+without requiring visitors to sign in with GitHub OAuth.
+
+## Star history & velocity
+
+Interactive trajectory of repository stargazers with derived velocity metrics:
+
+- 7-day and 30-day star growth
+- Current weekly velocity (stars per week)
+- Milestone achievements
+
+## Release event correlation
+
+Major releases fetched from GitHub and plotted against the repository timeline. Provides
+contextual awareness of growth acceleration around key launches using strictly non-causal
+attribution language ("Growth accelerated around this release").
+
+## Traffic dashboard & 14-day limit bypass
 
 Per-repository views, clones, top referrers, and popular pages over the last
-14 days, with charts powered by Recharts.
+14 days, with charts powered by Recharts. Private traffic analytics are unlocked
+for authenticated owners and collaborators.
 
-## AI insights — "Summarize my traffic"
+## Deterministic metrics & contextual AI insights
 
-The insights panel POSTs an aggregated traffic summary to `/api/insights`, which
-calls the Anthropic Messages API (`claude-haiku-4-5`) and returns a concise,
-actionable briefing: notable trends, strongest traffic sources, and concrete
-growth suggestions. Requires `ANTHROPIC_API_KEY`; the panel degrades gracefully
-(HTTP 503) when it is not configured.
+A deterministic statistical engine calculates rate of change, moving averages, and spikes.
+The AI insights panel then consumes these pre-calculated metrics and calls the Anthropic
+Messages API (`claude-haiku-4-5`) to return a concise, actionable briefing: what changed,
+growth drivers, and notable traffic channels. Requires `ANTHROPIC_API_KEY`; degrades
+gracefully (HTTP 503) when not configured.
 
 ## Daily snapshots (beyond GitHub's 14-day window)
 
