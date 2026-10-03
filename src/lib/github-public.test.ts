@@ -141,4 +141,48 @@ describe("PublicGitHubService", () => {
     expect(analysis.starHistory.length).toBeGreaterThanOrEqual(2);
     expect(analysis.highlights.length).toBeGreaterThan(0);
   });
+
+  it("handles zero stars gracefully in star history", async () => {
+    const service = new PublicGitHubService({ fetchFn: vi.fn() });
+    const points = await service.getStarHistory("test", "zero", 0, "2026-01-01T00:00:00Z");
+    expect(points).toEqual([{ date: "2026-01-01", stars: 0 }]);
+  });
+
+  it("throws PublicRepoError on forbidden 403 when remaining > 0", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 403,
+      statusText: "Forbidden",
+      headers: new Headers({ "x-ratelimit-remaining": "10" }),
+    });
+    const service = new PublicGitHubService({ fetchFn: mockFetch });
+    await expect(service.getRepositoryMetadata("private", "repo")).rejects.toThrow(
+      "Access Forbidden"
+    );
+  });
+
+  it("throws PublicRepoError on 500 server error", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      statusText: "Internal Server Error",
+      headers: new Headers({ "x-ratelimit-remaining": "50" }),
+    });
+    const service = new PublicGitHubService({ fetchFn: mockFetch });
+    await expect(service.getRepositoryMetadata("err", "repo")).rejects.toThrow(
+      "GitHub API error: Internal Server Error"
+    );
+  });
+
+  it("returns empty array when releases call fails with 404 or error", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      statusText: "Not Found",
+      headers: new Headers({ "x-ratelimit-remaining": "50" }),
+    });
+    const service = new PublicGitHubService({ fetchFn: mockFetch });
+    const releases = await service.getRecentReleases("none", "releases");
+    expect(releases).toEqual([]);
+  });
 });

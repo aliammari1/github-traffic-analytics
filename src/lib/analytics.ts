@@ -57,7 +57,7 @@ export interface HighlightInput {
   periodComparison?: PeriodComparisonResult;
   spikes?: SpikeDetectionResult[];
   topReferrer?: { name: string; count: number };
-  recentRelease?: { name: string; tag: string; publishedAt: string };
+  recentRelease?: { name?: string; tag?: string; tagName?: string; publishedAt: string };
   isTrackingActive?: boolean;
 }
 
@@ -285,8 +285,13 @@ export function generateChangeHighlights(input: HighlightInput): string[] {
 
   // 5. Release correlation highlights (strictly non-causal language)
   if (input.recentRelease) {
+    const relTag =
+      input.recentRelease.tagName ||
+      input.recentRelease.tag ||
+      input.recentRelease.name ||
+      "latest";
     highlights.push(
-      `Release ${input.recentRelease.tag} published on ${input.recentRelease.publishedAt.slice(0, 10)}; growth activity tracked around this release.`
+      `Release ${relTag} published on ${input.recentRelease.publishedAt.slice(0, 10)}; growth activity tracked around this release.`
     );
   }
 

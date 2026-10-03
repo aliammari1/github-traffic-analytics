@@ -186,5 +186,37 @@ describe("analytics layer", () => {
         true
       );
     });
+
+    it("handles negative percentage changes and alternative branches in highlights", () => {
+      const highlights = generateChangeHighlights({
+        repoName: "test",
+        periodComparison: {
+          viewsChangePercent: -20,
+          uniquesChangePercent: -15,
+          clonesChangePercent: 10,
+        },
+        starVelocity: {
+          currentStars: 100,
+          growth7d: 0,
+          growth30d: 0,
+          weeklyVelocity: 0,
+          dailyVelocity: 0,
+        },
+        isTrackingActive: true,
+      });
+
+      expect(highlights.some((h) => h.includes("Traffic declined 20%"))).toBe(true);
+      expect(highlights.some((h) => h.includes("Repository has 100 total stars."))).toBe(true);
+
+      const stableHighlights = generateChangeHighlights({
+        repoName: "test",
+        periodComparison: {
+          viewsChangePercent: 0,
+          uniquesChangePercent: 0,
+          clonesChangePercent: 0,
+        },
+      });
+      expect(stableHighlights.some((h) => h.includes("Traffic remained stable"))).toBe(true);
+    });
   });
 });
