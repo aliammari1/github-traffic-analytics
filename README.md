@@ -42,9 +42,17 @@ Add a real-time, edge-cached growth card to your repository's `README.md`. It di
 [![Repo Growth](https://github-traffic-analytics.ali-ammari.workers.dev/api/card/owner/repo)](https://github-traffic-analytics.ali-ammari.workers.dev/repo/owner/repo)
 ```
 
-### Choose from multiple themes:
+### Choose a card style
 
-Add `?theme=<name>` to the image URL:
+Use the default metric card or add a recent star-growth sparkline:
+
+```markdown
+[![Repo Growth](https://github-traffic-analytics.ali-ammari.workers.dev/api/card/owner/repo?style=sparkline)](https://github-traffic-analytics.ali-ammari.workers.dev/repo/owner/repo)
+```
+
+### Choose from multiple themes
+
+Add `?theme=<name>` to the image URL. Themes also work with `style=sparkline`:
 
 - `github-dark` (default)
 - `github-light`

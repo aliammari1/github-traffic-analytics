@@ -5,17 +5,31 @@ import {
   PublicRepoNotFoundError,
   PublicRepoRateLimitError,
 } from "@/lib/github-public";
-import { GROWTH_CARD_THEMES, GrowthCardTheme, renderGrowthCard } from "@/lib/growth-card";
+import {
+  GROWTH_CARD_STYLES,
+  GROWTH_CARD_THEMES,
+  type GrowthCardStyle,
+  type GrowthCardTheme,
+  renderGrowthCard,
+} from "@/lib/growth-card";
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ owner: string; repo: string }> }
 ): Promise<Response> {
   const { owner, repo } = await params;
-  const theme = new URL(request.url).searchParams.get("theme") ?? "github-dark";
+  const searchParams = new URL(request.url).searchParams;
+  const theme = searchParams.get("theme") ?? "github-dark";
+  const style = searchParams.get("style") ?? "default";
   const parsed = parseRepoInput(`${owner}/${repo}`);
-  if (!parsed || parsed.owner !== owner || parsed.repo !== repo || !(theme in GROWTH_CARD_THEMES)) {
-    return new Response("Invalid repository or theme", {
+  if (
+    !parsed ||
+    parsed.owner !== owner ||
+    parsed.repo !== repo ||
+    !(theme in GROWTH_CARD_THEMES) ||
+    !GROWTH_CARD_STYLES.includes(style as GrowthCardStyle)
+  ) {
+    return new Response("Invalid repository, theme, or style", {
       status: 400,
       headers: { "Cache-Control": "private, no-store" },
     });
@@ -33,7 +47,8 @@ export async function GET(
         velocityChangePercent,
         latestRelease: analysis.releases[0]?.tagName ?? null,
       },
-      theme as GrowthCardTheme
+      theme as GrowthCardTheme,
+      { style: style as GrowthCardStyle, history: analysis.starHistory }
     );
     return new Response(svg, {
       headers: {

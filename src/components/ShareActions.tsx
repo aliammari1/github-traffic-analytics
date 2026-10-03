@@ -4,13 +4,19 @@
 import { useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { GROWTH_CARD_THEMES, type GrowthCardTheme } from "@/lib/growth-card";
+import {
+  GROWTH_CARD_STYLES,
+  GROWTH_CARD_THEMES,
+  type GrowthCardStyle,
+  type GrowthCardTheme,
+} from "@/lib/growth-card";
 
 export default function ShareActions({ owner, repo }: { owner: string; repo: string }) {
   const [theme, setTheme] = useState<GrowthCardTheme>("github-dark");
+  const [style, setStyle] = useState<GrowthCardStyle>("default");
   const [feedback, setFeedback] = useState("");
   const path = `/repo/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
-  const cardPath = `/api/card/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}?theme=${theme}`;
+  const cardPath = `/api/card/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}?theme=${theme}&style=${style}`;
 
   async function copy(value: string, message: string) {
     try {
@@ -72,21 +78,38 @@ export default function ShareActions({ owner, repo }: { owner: string; repo: str
           Copy Markdown card
         </Button>
       </div>
-      <label className="flex items-center gap-3 text-sm" htmlFor="card-theme">
-        Card theme
-        <select
-          id="card-theme"
-          value={theme}
-          onChange={(event) => setTheme(event.target.value as GrowthCardTheme)}
-          className="rounded-md border border-border bg-background px-3 py-2"
-        >
-          {Object.keys(GROWTH_CARD_THEMES).map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div className="flex flex-wrap gap-3">
+        <label className="flex items-center gap-3 text-sm" htmlFor="card-style">
+          Card style
+          <select
+            id="card-style"
+            value={style}
+            onChange={(event) => setStyle(event.target.value as GrowthCardStyle)}
+            className="rounded-md border border-border bg-background px-3 py-2"
+          >
+            {GROWTH_CARD_STYLES.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex items-center gap-3 text-sm" htmlFor="card-theme">
+          Card theme
+          <select
+            id="card-theme"
+            value={theme}
+            onChange={(event) => setTheme(event.target.value as GrowthCardTheme)}
+            className="rounded-md border border-border bg-background px-3 py-2"
+          >
+            {Object.keys(GROWTH_CARD_THEMES).map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
       <Image
         src={cardPath}
         alt={`Growth card for ${owner}/${repo}`}

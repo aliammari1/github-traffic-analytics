@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 import { describe, expect, it } from "vitest";
-import { renderGrowthCard } from "./growth-card";
+import { buildSparklinePoints, renderGrowthCard } from "./growth-card";
 
 describe("renderGrowthCard", () => {
   const repo = {
@@ -26,5 +26,30 @@ describe("renderGrowthCard", () => {
     expect(svg).toContain("#2e3440");
     expect(svg).toContain("30-day growth unavailable");
     expect(svg).not.toContain("Latest release:");
+  });
+
+  it("renders a dependency-free sparkline from recent star history", () => {
+    const history = [
+      { date: "2026-09-01", stars: 100 },
+      { date: "2026-09-15", stars: 125 },
+      { date: "2026-10-01", stars: 180 },
+    ];
+    const points = buildSparklinePoints(history);
+    expect(points).toBeTruthy();
+    expect(points?.split(" ")).toHaveLength(3);
+
+    const svg = renderGrowthCard(repo, "github-dark", { style: "sparkline", history });
+    expect(svg).toContain("<polyline");
+    expect(svg).toContain("Recent 30d star trend");
+    expect(svg).toContain("Includes a recent star-growth sparkline");
+  });
+
+  it("degrades sparkline cards honestly when history is insufficient", () => {
+    const svg = renderGrowthCard(repo, "github-dark", {
+      style: "sparkline",
+      history: [{ date: "2026-10-01", stars: 100 }],
+    });
+    expect(svg).toContain("Trend unavailable");
+    expect(svg).not.toContain("<polyline");
   });
 });

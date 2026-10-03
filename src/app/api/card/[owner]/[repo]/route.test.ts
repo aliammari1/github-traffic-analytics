@@ -27,6 +27,25 @@ describe("public growth card", () => {
     expect(await res.text()).toContain("owner/repo");
   });
 
+  it("renders the sparkline card style from public star history", async () => {
+    vi.mocked(publicGitHub.analyzePublicRepository).mockResolvedValue({
+      repository: { fullName: "owner/repo", starsCount: 42 },
+      starHistory: [
+        { date: "2026-09-01", stars: 20 },
+        { date: "2026-09-15", stars: 30 },
+        { date: "2026-10-01", stars: 42 },
+      ],
+      releases: [],
+    } as any);
+
+    const res = await GET(
+      new Request("https://example.com/api/card/owner/repo?style=sparkline"),
+      context("owner", "repo")
+    );
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain("<polyline");
+  });
+
   it("does not render private or missing repositories", async () => {
     vi.mocked(publicGitHub.analyzePublicRepository).mockRejectedValue(
       new PublicRepoNotFoundError("owner", "secret")
@@ -39,7 +58,7 @@ describe("public growth card", () => {
     expect(res.headers.get("cache-control")).toBe("private, no-store");
   });
 
-  it("rejects malformed paths and unknown themes", async () => {
+  it("rejects malformed paths and unknown themes or styles", async () => {
     const invalid = await GET(
       new Request("https://example.com/api/card/-bad/repo"),
       context("-bad", "repo")
@@ -50,5 +69,10 @@ describe("public growth card", () => {
       context("owner", "repo")
     );
     expect(theme.status).toBe(400);
+    const style = await GET(
+      new Request("https://example.com/api/card/owner/repo?style=evil"),
+      context("owner", "repo")
+    );
+    expect(style.status).toBe(400);
   });
 });
