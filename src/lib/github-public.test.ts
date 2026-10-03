@@ -44,9 +44,40 @@ describe("PublicGitHubService", () => {
     const metadata = await service.getRepositoryMetadata("vercel", "next.js");
 
     expect(metadata.name).toBe("next.js");
+    expect(metadata.fullName).toBe("vercel/next.js");
     expect(metadata.starsCount).toBe(125000);
     expect(metadata.owner.login).toBe("vercel");
+    expect(metadata.topics).toEqual(["react", "framework"]);
     expect(metadata.license).toBe("MIT");
+  });
+
+  it("uses the optional server token for public GitHub requests without exposing it in output", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "x-ratelimit-remaining": "4999" }),
+      json: async () => ({
+        id: 123,
+        name: "repo",
+        full_name: "owner/repo",
+        owner: { login: "owner", avatar_url: "https://example.com/avatar.png" },
+        private: false,
+        stargazers_count: 10,
+        forks_count: 1,
+        open_issues_count: 0,
+        created_at: "2026-01-01T00:00:00Z",
+        updated_at: "2026-10-01T00:00:00Z",
+        html_url: "https://github.com/owner/repo",
+        topics: [],
+      }),
+    });
+
+    const service = new PublicGitHubService({ fetchFn: mockFetch, token: "server-secret" });
+    const metadata = await service.getRepositoryMetadata("owner", "repo");
+
+    const requestInit = mockFetch.mock.calls[0]?.[1] as RequestInit;
+    expect(new Headers(requestInit.headers).get("Authorization")).toBe("Bearer server-secret");
+    expect(JSON.stringify(metadata)).not.toContain("server-secret");
   });
 
   it("throws PublicRepoNotFoundError on 404", async () => {
@@ -59,6 +90,24 @@ describe("PublicGitHubService", () => {
 
     const service = new PublicGitHubService({ fetchFn: mockFetch });
     await expect(service.getRepositoryMetadata("nonexistent", "repo")).rejects.toBeInstanceOf(
+      PublicRepoNotFoundError
+    );
+  });
+
+  it("rejects a private repository even if an upstream response includes metadata", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers(),
+      json: async () => ({
+        private: true,
+        name: "secret",
+        full_name: "owner/secret",
+        stargazers_count: 1,
+      }),
+    });
+    const service = new PublicGitHubService({ fetchFn: mockFetch });
+    await expect(service.getRepositoryMetadata("owner", "secret")).rejects.toBeInstanceOf(
       PublicRepoNotFoundError
     );
   });
@@ -114,7 +163,7 @@ describe("PublicGitHubService", () => {
     expect(emptyReleases).toEqual([]);
   });
 
-  it("builds a star trajectory and computes velocity with fixed clock", async () => {
+  it("does not substitute restricted stargazer identities when history is unavailable", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-09-25T00:00:00Z"));
 
@@ -158,14 +207,17 @@ describe("PublicGitHubService", () => {
     const analysis = await service.analyzePublicRepository("user", "test-repo");
 
     expect(analysis.repository.name).toBe("test-repo");
-    expect(analysis.starHistory.length).toBeGreaterThanOrEqual(2);
+    expect(analysis.starHistory).toEqual([]);
     expect(analysis.highlights.length).toBeGreaterThan(0);
     expect(analysis.starVelocity.currentStars).toBe(50);
-    expect(analysis.starVelocity.growth7d).toBe(19);
-    expect(analysis.starVelocity.growth30d).toBe(50);
+    expect(analysis.starVelocity.growth7d).toBe(0);
+    expect(analysis.starVelocity.growth30d).toBe(0);
+    expect(mockFetch.mock.calls.some(([url]) => url.includes("/stargazers?"))).toBe(false);
   });
 
   it("builds star trajectory using modern /stargazers/history weekly buckets", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-27T00:00:00Z"));
     const mockHistory = [
       {
         week: 1789862400, // 2026-09-20
@@ -192,8 +244,16 @@ describe("PublicGitHubService", () => {
 
     const service = new PublicGitHubService({ fetchFn: mockFetch });
     const points = await service.getStarHistory("fast", "repo", 20, "2026-01-01T00:00:00Z");
+    expect(points[0].date).toBe("2026-09-19");
     expect(points.length).toBeGreaterThan(1);
+    expect(points.some((p) => p.date === "2026-09-20" && p.stars === 11)).toBe(true);
     expect(points[points.length - 1].stars).toBe(20);
+    expect(points.some((point) => point.date === "2026-01-01")).toBe(false);
+    expect(
+      mockFetch.mock.calls.some(
+        ([, options]) => options?.headers?.["X-GitHub-Api-Version"] === "2026-03-10"
+      )
+    ).toBe(true);
   });
 
   it("uses cached negative result when repository is repeatedly queried after 404", async () => {
@@ -249,15 +309,15 @@ describe("PublicGitHubService", () => {
     });
 
     const service = new PublicGitHubService({ fetchFn: mockFetch });
-    const analysis = await service.analyzePublicRepository("user", "limited-repo");
-    expect(analysis.isRateLimited).toBe(true);
-    expect(analysis.starHistory).toHaveLength(2);
+    await expect(service.analyzePublicRepository("user", "limited-repo")).rejects.toBeInstanceOf(
+      PublicRepoRateLimitError
+    );
   });
 
   it("handles zero stars gracefully in star history", async () => {
     const service = new PublicGitHubService({ fetchFn: vi.fn() });
     const points = await service.getStarHistory("test", "zero", 0, "2026-01-01T00:00:00Z");
-    expect(points).toEqual([{ date: "2026-01-01", stars: 0 }]);
+    expect(points).toEqual([{ date: new Date().toISOString().slice(0, 10), stars: 0 }]);
   });
 
   it("throws PublicRepoError on forbidden 403 when remaining > 0", async () => {

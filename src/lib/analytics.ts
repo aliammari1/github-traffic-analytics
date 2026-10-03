@@ -22,6 +22,184 @@ export interface StarPoint {
   stars: number;
 }
 
+function starCountAt(history: StarPoint[], date: Date): number | null {
+  const boundary = date.toISOString().slice(0, 10);
+  let observed: StarPoint | undefined;
+  for (const point of history) {
+    if (point.date <= boundary && (!observed || point.date > observed.date)) observed = point;
+  }
+  if (!observed) return null;
+  const ageDays =
+    (Date.parse(`${boundary}T00:00:00Z`) - Date.parse(`${observed.date}T00:00:00Z`)) / 86_400_000;
+  return ageDays <= 1 ? observed.stars : null;
+}
+
+/** A complete window requires observations at both boundaries. */
+export function starsGained(history: StarPoint[], days: number, now = new Date()): number | null {
+  const start = new Date(now.getTime() - days * 86_400_000);
+  const before = starCountAt(history, start);
+  const after = starCountAt(history, now);
+  return before === null || after === null ? null : Math.max(0, after - before);
+}
+
+export function compareStarPeriods(history: StarPoint[], days: number, now = new Date()) {
+  const previousEnd = new Date(now.getTime() - days * 86_400_000);
+  const current = starsGained(history, days, now);
+  const previous = starsGained(history, days, previousEnd);
+  return {
+    current,
+    previous,
+    changePercent:
+      current === null || previous === null ? null : calculatePercentageChange(current, previous),
+  };
+}
+
+export function releaseWindow(history: StarPoint[], publishedAt: string, now = new Date()) {
+  const releaseDate = new Date(publishedAt);
+  if (
+    Number.isNaN(releaseDate.getTime()) ||
+    releaseDate.getTime() + 14 * 86_400_000 > now.getTime()
+  )
+    return null;
+  const before = starsGained(history, 14, releaseDate);
+  const after = starsGained(history, 14, new Date(releaseDate.getTime() + 14 * 86_400_000));
+  if (before === null || after === null) return null;
+  return {
+    before,
+    after,
+    beforePerDay: Math.round((before / 14) * 10) / 10,
+    afterPerDay: Math.round((after / 14) * 10) / 10,
+    velocityChangePercent: calculatePercentageChange(after, before),
+  };
+}
+
+export interface ReleaseImpactAnalysis {
+  tagName: string;
+  publishedAt: string;
+  windowDays: number;
+  beforeStars: number;
+  afterStars: number;
+  beforeDailyVelocity: number;
+  afterDailyVelocity: number;
+  velocityChangePercent: number | null;
+  associationLabel: string;
+}
+
+/**
+ * Deterministically analyzes star growth velocity before and after a release event.
+ * Uses strictly non-causal temporal association language.
+ */
+export function calculateReleaseImpact(
+  history: StarPoint[],
+  release: { tagName?: string; tag?: string; name?: string | null; publishedAt: string },
+  now = new Date()
+): ReleaseImpactAnalysis | null {
+  const rw = releaseWindow(history, release.publishedAt, now);
+  if (!rw) return null;
+
+  const tag = release.tagName || release.tag || release.name || "Release";
+  let associationLabel = "Growth remained steady around this release window.";
+  if (rw.velocityChangePercent !== null) {
+    if (rw.velocityChangePercent >= 20) {
+      associationLabel = `Growth accelerated around this release (+${rw.velocityChangePercent}%).`;
+    } else if (rw.velocityChangePercent <= -20) {
+      associationLabel = `Growth moderated around this release (${rw.velocityChangePercent}%).`;
+    }
+  }
+
+  return {
+    tagName: tag,
+    publishedAt: release.publishedAt,
+    windowDays: 14,
+    beforeStars: rw.before,
+    afterStars: rw.after,
+    beforeDailyVelocity: rw.beforePerDay,
+    afterDailyVelocity: rw.afterPerDay,
+    velocityChangePercent: rw.velocityChangePercent,
+    associationLabel,
+  };
+}
+
+/**
+ * Deterministic Repository Momentum computation.
+ *
+ * Formula components:
+ * 1. 7-day stars gained (`growth7d`) as normalized weekly run-rate.
+ * 2. 30-day baseline expected weekly rate: `expectedWeeklyRate = growth30d * (7 / 30)`.
+ * 3. Acceleration ratio: `growth7d / Math.max(1, expectedWeeklyRate)`.
+ * 4. Scale dampening factor: For repositories with fewer than 50 total stars, percentage
+ *    fluctuations can be noisy; dampening scales from 0.2 to 1.0 (at >= 50 stars).
+ * 5. Normalized Score (0 - 100): Combines absolute run-rate weight (40%) and acceleration weight (60%),
+ *    bounded between 0 and 100.
+ */
+export interface RepoMomentum {
+  score: number;
+  stage: "accelerating" | "steady" | "cooling" | "dormant";
+  accelerationRatio: number;
+  weeklyRunRate: number;
+  monthlyGrowth: number;
+  description: string;
+}
+
+export function calculateRepoMomentum({
+  currentStars,
+  growth7d,
+  growth30d,
+}: {
+  currentStars: number;
+  growth7d: number;
+  growth30d: number;
+}): RepoMomentum {
+  const g7 = Math.max(0, growth7d);
+  const g30 = Math.max(0, growth30d);
+
+  if (g7 === 0 && g30 === 0) {
+    return {
+      score: 0,
+      stage: "dormant",
+      accelerationRatio: 0,
+      weeklyRunRate: 0,
+      monthlyGrowth: 0,
+      description: "Dormant star momentum with no recent star growth detected in the last 30 days.",
+    };
+  }
+
+  const expectedWeekly = g30 * (7 / 30);
+  const accelerationRatio =
+    expectedWeekly > 0 ? Math.round((g7 / expectedWeekly) * 100) / 100 : g7 > 0 ? 2.0 : 1.0;
+
+  // Scale dampening for small repos under 50 stars
+  const scaleDampening = Math.min(1.0, Math.max(0.2, currentStars / 50));
+
+  // Volume run rate (log scale: 100/wk gives ~50 pts)
+  const volumeComponent = Math.min(50, Math.log10(Math.max(1, g7) + 1) * 25);
+  // Acceleration ratio (1.0 = 25 pts, 2.0+ = 50 pts)
+  const accelerationComponent = Math.min(50, accelerationRatio * 25);
+
+  const rawScore = (volumeComponent + accelerationComponent) * scaleDampening;
+  const score = Math.min(100, Math.max(0, Math.round(rawScore)));
+
+  let stage: RepoMomentum["stage"] = "steady";
+  let description = "Steady star trajectory tracking consistent with the 30-day baseline.";
+
+  if (accelerationRatio >= 1.25 && g7 >= 3) {
+    stage = "accelerating";
+    description = `Star acquisition is accelerating at ${Math.round((accelerationRatio - 1) * 100)}% above its 30-day baseline rate.`;
+  } else if (accelerationRatio < 0.75) {
+    stage = "cooling";
+    description = `Star acquisition has slowed to ${Math.round(accelerationRatio * 100)}% of its 30-day average.`;
+  }
+
+  return {
+    score,
+    stage,
+    accelerationRatio,
+    weeklyRunRate: g7,
+    monthlyGrowth: g30,
+    description,
+  };
+}
+
 export interface StarVelocityResult {
   currentStars: number;
   growth7d: number;
@@ -57,6 +235,7 @@ export interface PeriodComparisonResult {
 }
 
 export interface HighlightInput {
+  starVelocityChangePercent?: number | null;
   repoName?: string;
   currentStars?: number;
   starVelocity?: StarVelocityResult;
@@ -170,25 +349,8 @@ export function calculateStarVelocity(
     };
   }
 
-  const sorted = [...history].sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-  );
-  const now = Date.now();
-  const ms7d = 7 * 24 * 60 * 60 * 1000;
-  const ms30d = 30 * 24 * 60 * 60 * 1000;
-
-  const cutoff7d = now - ms7d;
-  const cutoff30d = now - ms30d;
-
-  // We want the latest observation at or before each cutoff as the baseline
-  const point7d = [...sorted].reverse().find((p) => new Date(p.date).getTime() <= cutoff7d);
-  const point30d = [...sorted].reverse().find((p) => new Date(p.date).getTime() <= cutoff30d);
-
-  const base7d = point7d ? point7d.stars : sorted[0].stars;
-  const base30d = point30d ? point30d.stars : sorted[0].stars;
-
-  const growth7d = Math.max(0, currentStars - base7d);
-  const growth30d = Math.max(0, currentStars - base30d);
+  const growth7d = starsGained(history, 7) ?? 0;
+  const growth30d = starsGained(history, 30) ?? 0;
 
   const weeklyVelocity = growth7d;
   const dailyVelocity = Math.round((growth7d / 7) * 10) / 10;
@@ -259,6 +421,17 @@ export function comparePeriods(
 export function generateChangeHighlights(input: HighlightInput): string[] {
   const highlights: string[] = [];
 
+  if (
+    input.starVelocityChangePercent !== undefined &&
+    input.starVelocityChangePercent !== null &&
+    Math.abs(input.starVelocityChangePercent) >= 5
+  ) {
+    const direction = input.starVelocityChangePercent > 0 ? "increased" : "decreased";
+    highlights.push(
+      `Star velocity ${direction} ${Math.abs(input.starVelocityChangePercent)}% this week compared with the previous week.`
+    );
+  }
+
   // 1. Traffic comparison highlights
   if (
     input.periodComparison?.viewsChangePercent !== undefined &&
@@ -295,7 +468,9 @@ export function generateChangeHighlights(input: HighlightInput): string[] {
         `Added +${growth7d.toLocaleString()} stars in the last 7 days (~${dailyVelocity}/day).`
       );
     } else if (currentStars > 0) {
-      highlights.push(`Star count held steady with zero net gain over the past week.`);
+      highlights.push(
+        `Star count held steady with zero net gain over the past week (no positive star growth detected).`
+      );
     }
   }
 

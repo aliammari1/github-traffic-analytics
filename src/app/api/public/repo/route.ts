@@ -14,20 +14,42 @@ const querySchema = z.object({
 });
 
 // In-memory sliding-window IP rate limiter (60 requests per minute per IP)
-const ipRateLimit = new Map<string, { count: number; expiresAt: number }>();
+const ipRateLimit = new Map<string, number[]>();
+const MAX_RATE_LIMIT_ENTRIES = 5000;
 
-function checkIpRateLimit(ip: string, maxRequests = 60, windowMs = 60_000): boolean {
-  const now = Date.now();
-  const entry = ipRateLimit.get(ip);
-  if (!entry || entry.expiresAt <= now) {
-    ipRateLimit.set(ip, { count: 1, expiresAt: now + windowMs });
-    return true;
+export function checkIpRateLimit(
+  ip: string,
+  maxRequests = 60,
+  windowMs = 60_000,
+  now = Date.now()
+): boolean {
+  const windowStart = now - windowMs;
+  let timestamps = ipRateLimit.get(ip);
+  if (!timestamps) {
+    if (ipRateLimit.size >= MAX_RATE_LIMIT_ENTRIES) {
+      for (const [key, times] of ipRateLimit.entries()) {
+        const valid = times.filter((t) => t > windowStart);
+        if (valid.length === 0) ipRateLimit.delete(key);
+        else ipRateLimit.set(key, valid);
+      }
+    }
+    timestamps = [];
+    ipRateLimit.set(ip, timestamps);
   }
-  if (entry.count >= maxRequests) {
+
+  const recent = timestamps.filter((t) => t > windowStart);
+  if (recent.length >= maxRequests) {
+    ipRateLimit.set(ip, recent);
     return false;
   }
-  entry.count++;
+
+  recent.push(now);
+  ipRateLimit.set(ip, recent);
   return true;
+}
+
+export function resetIpRateLimit() {
+  ipRateLimit.clear();
 }
 
 /**
@@ -37,8 +59,8 @@ function checkIpRateLimit(ip: string, maxRequests = 60, windowMs = 60_000): bool
 export async function GET(request: NextRequest) {
   try {
     const ip =
-      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
       request.headers.get("cf-connecting-ip") ||
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
       "anonymous";
 
     if (!checkIpRateLimit(ip)) {

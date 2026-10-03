@@ -1,12 +1,9 @@
 <!-- SPDX-License-Identifier: MIT -->
 <div align="center">
 
-# GitHub Traffic Analytics
+# Understand why GitHub repositories grow.
 
-### See what is driving your GitHub repository's growth, preserve the analytics GitHub deletes after 14 days, and understand what changed. A developer-native growth intelligence platform.
-
-<!-- Banner committed under assets/ — generate per BANNER.md (dark-tech charts), then uncomment. -->
-<!-- ![GitHub Traffic Analytics](assets/hero.png) -->
+### Explore star growth trajectory, measure release impact, compare repositories side-by-side, and preserve private traffic analytics beyond GitHub's 14-day limit.
 
 [![CI](https://github.com/aliammari1/github-traffic-analytics/actions/workflows/ci.yml/badge.svg)](https://github.com/aliammari1/github-traffic-analytics/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/aliammari1/github-traffic-analytics/branch/main/graph/badge.svg)](https://codecov.io/gh/aliammari1/github-traffic-analytics)
@@ -14,180 +11,222 @@
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/)
 [![pnpm](https://img.shields.io/badge/pnpm-10-f69220?logo=pnpm)](https://pnpm.io/)
 
-[**▶ Live demo**](https://github-traffic-analytics.pages.dev) · [Docs](docs/) · [Deploy your own](#deploy-your-own-cloudflare) · [⭐ Star this repo](https://github.com/aliammari1/github-traffic-analytics)
+[**▶ Try Live Demo**](https://github-traffic-analytics.pages.dev) · [Docs](docs/) · [Compare Repositories](https://github-traffic-analytics.pages.dev/compare) · [⭐ Star this Repo](https://github.com/aliammari1/github-traffic-analytics)
 
-[![▶ Live dashboard demo](https://img.shields.io/badge/▶_Live_dashboard-demo-2ea44f?style=for-the-badge)](https://github-traffic-analytics.pages.dev)
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/aliammari1/github-traffic-analytics)
-[![⭐ Star](https://img.shields.io/github/stars/aliammari1/github-traffic-analytics?style=for-the-badge&logo=github&label=Star&color=yellow)](https://github.com/aliammari1/github-traffic-analytics)
+<br />
+
+<a href="https://github-traffic-analytics.pages.dev">
+  <img src="assets/screenshots/02-repo-overview.png" alt="GitHub Repository Growth Intelligence Platform" width="900" style="border-radius: 8px; border: 1px solid #30363d;" />
+</a>
 
 </div>
 
 ---
 
-## ⚡ Add a live traffic badge to your README
+## ⚡ Try It Instantly (No Login Required)
 
-The fastest way to try it: once your instance is deployed, drop a **live traffic
-badge** into any repo's README. It renders total views since you started tracking
-— the number GitHub throws away after 14 days — and links back to your dashboard:
+Analyze any public GitHub repository directly in your browser:
 
-```md
-[![Repo traffic](https://YOUR-APP.pages.dev/api/badge?owner=you&repo=your-repo)](https://YOUR-APP.pages.dev)
-```
-
-The `/api/badge` endpoint is public, edge-cached (Cache-Control + ETag) and
-Cloudflare rate-limited, so it's safe to embed anywhere. A standalone
-**"persist traffic → badge + JSON" GitHub Action** (so you don't even need to
-host the app) is being extracted as **Wave 2** — ⭐ to follow along.
-
-## GitHub Traffic Analytics vs the alternatives
-
-|                                       | **GitHub Traffic Analytics**  | GitHub's built-in Insights |    Repobeats    |  star-history   |
-| ------------------------------------- | :---------------------------: | :------------------------: | :-------------: | :-------------: |
-| Keeps traffic/clones past 14 days     | ✅ forever (via D1 snapshots) |      ❌ 14-day window      |  ❌ image only  |       n/a       |
-| Public repository analysis (no login) |              ✅               |     ❌ login required      |       ❌        |       ✅        |
-| Self-hosted / own your data           |              ✅               |            n/a             | ❌ hosted SaaS  |    ❌ hosted    |
-| Price                                 |     **$0** (CF free tier)     |            free            | free/paid tiers |      free       |
-| Embeddable README badge               |          ✅ live SVG          |             ❌             |       ✅        | ✅ (stars only) |
-| Star history & velocity               |              ✅               |             ❌             |       ➖        |       ✅        |
-| Release event correlation             |              ✅               |             ❌             |       ❌        |       ❌        |
-| Contextual AI explanation             |              ✅               |             ❌             |       ❌        |       ❌        |
-| Open source (MIT)                     |              ✅               |             ❌             |       ❌        |       ✅        |
+- [**vercel/next.js**](https://github-traffic-analytics.pages.dev/repo/vercel/next.js) — Star trajectory, 7d/30d run-rate, and release impact
+- [**facebook/react**](https://github-traffic-analytics.pages.dev/repo/facebook/react) — Historical growth curves and milestone timeline
+- [**astral-sh/ruff**](https://github-traffic-analytics.pages.dev/repo/astral-sh/ruff) — Velocity acceleration and stargazer momentum
+- [**Compare Trajectories**](https://github-traffic-analytics.pages.dev/compare?repos=vercel/next.js,facebook/react,astral-sh/ruff) — Multi-repository side-by-side comparison
 
 ---
 
-> [!IMPORTANT]
-> **GitHub's traffic API only returns the last 14 days.** That's a hard limit on
-> GitHub's side. This app works around it by writing a **daily snapshot** of each
-> tracked repo's traffic to a database, so your history accumulates indefinitely
-> from the day you enable tracking. Live (untracked) data is still capped at 14 days.
+## 🏷️ Embed a Live Growth Card in Your README
 
-## What it does
+Add a real-time, edge-cached growth card to your repository's `README.md`. It displays your repository's stars, 30-day growth, momentum score, and latest release:
 
-- **Public repository analysis** — instantly analyze any public GitHub repository
-  (`owner/repo` or full URL) without logging in. View star history trajectory, star
-  velocity (7d/30d), and release event timeline.
-- **Traffic dashboard & 14-day limit bypass** — views, clones, top referrers, and
-  popular paths per repo. Daily snapshots persisted to Cloudflare **D1** via a
-  **Cron Worker** maintain history beyond GitHub's 14-day window.
-- **Deterministic analytics & "What Changed"** — statistical engine computing
-  star velocity (7d/30d), period-over-period traffic comparisons, and release
-  highlights before displaying raw charts.
-- **Contextual AI insights** — an optional streaming traffic summary using the Anthropic
-  Messages API (`claude-haiku-4-5`) synthesizing views, clones, referrers, and popular content paths.
-- **Progressive disclosure** — public metrics accessible to anyone; verified repository
-  owners unlock private views, clones, referrers, and long-term retention.
-
-## Quickstart
-
-```bash
-git clone https://github.com/aliammari1/github-traffic-analytics.git
-cd github-traffic-analytics
-pnpm install
-cp .env.example .env.local   # fill in the values (see below)
-pnpm dev                     # http://localhost:3000
+```markdown
+[![Repo Growth](https://github-traffic-analytics.pages.dev/api/card/owner/repo)](https://github-traffic-analytics.pages.dev/repo/owner/repo)
 ```
 
-### GitHub OAuth setup
+### Choose from multiple themes:
 
-Create an OAuth App at **Settings → Developer settings → OAuth Apps → New OAuth App**:
+Add `?theme=<name>` to the image URL:
 
-- **Homepage URL:** `http://localhost:3000`
-- **Authorization callback URL:** `http://localhost:3000/api/auth/callback/github`
+- `github-dark` (default)
+- `github-light`
+- `transparent`
+- `dracula`
+- `nord`
+- `catppuccin`
 
-The app requests the `repo` and `user:email` scopes — both are required to read
-repository traffic. Each user only ever sees their own data; tokens are encrypted
-in httpOnly session cookies and never exposed to client JavaScript.
+```markdown
+[![Repo Growth](https://github-traffic-analytics.pages.dev/api/card/owner/repo?theme=nord)](https://github-traffic-analytics.pages.dev/repo/owner/repo)
+```
 
-### Environment variables
+You can also embed the classic **total views badge** that counts traffic accumulated beyond GitHub's 14-day limit:
 
-| Variable               | Required | Description                                                           |
-| ---------------------- | -------- | --------------------------------------------------------------------- |
-| `NEXTAUTH_SECRET`      | yes      | NextAuth session secret (`openssl rand -base64 32`)                   |
-| `NEXTAUTH_URL`         | yes      | App URL (`http://localhost:3000` locally)                             |
-| `GITHUB_CLIENT_ID`     | yes      | GitHub OAuth App client id                                            |
-| `GITHUB_CLIENT_SECRET` | yes      | GitHub OAuth App client secret                                        |
-| `ANTHROPIC_API_KEY`    | no       | Enables the AI insights panel; the panel degrades gracefully if unset |
+```markdown
+[![Repo traffic](https://github-traffic-analytics.pages.dev/api/badge?owner=you&repo=your-repo)](https://github-traffic-analytics.pages.dev/repo/you/your-repo)
+```
 
-> `next build` needs these present. For CI builds without real credentials, dummy
-> values are sufficient (the build doesn't call the providers).
+---
 
-## Scripts
+## 🌟 GitHub Traffic Analytics vs Alternatives
 
-| Command                            | Description                                                       |
-| ---------------------------------- | ----------------------------------------------------------------- |
-| `pnpm dev`                         | Dev server (Turbopack)                                            |
-| `pnpm lint`                        | ESLint (`next lint` was removed in Next 16 → ESLint CLI)          |
-| `pnpm typecheck`                   | `tsc --noEmit`                                                    |
-| `pnpm test` / `pnpm test:coverage` | Vitest unit/component tests (80% coverage gate)                   |
-| `pnpm test:e2e`                    | Playwright e2e (sign-in → select repo → view traffic, MSW-mocked) |
-| `pnpm build`                       | Production build                                                  |
-| `pnpm cf:build` / `pnpm cf:deploy` | Build/deploy for Cloudflare via `@opennextjs/cloudflare`          |
+| Feature                                  |  **GitHub Traffic Analytics**   | GitHub Built-in Insights |    Repobeats     |    star-history    |
+| :--------------------------------------- | :-----------------------------: | :----------------------: | :--------------: | :----------------: |
+| **Instant public analysis (no login)**   |             ✅ Yes              |  ❌ No (requires auth)   |      ❌ No       |       ✅ Yes       |
+| **Star velocity & run-rate calculation** |       ✅ 7d/30d run-rate        |         ❌ None          |    ➖ Partial    | ❌ Cumulative only |
+| **Release impact window analysis**       |   ✅ 14d before vs. 14d after   |         ❌ None          |     ❌ None      |      ❌ None       |
+| **Multi-repository comparison**          |  ✅ Side-by-side (`/compare`)   |   ❌ Single repo only    |     ❌ None      |   ✅ Stars only    |
+| **Embeddable README growth card**        |  ✅ Dynamic SVG (`/api/card`)   |         ❌ None          | ✅ Activity card |   ✅ Stars chart   |
+| **Preserves traffic beyond 14 days**     |  ✅ Indefinite (D1 snapshots)   | ❌ Deleted after 14 days |  ❌ Images only  |   ❌ No traffic    |
+| **Deterministic non-causal math**        | ✅ Pure TypeScript unit-tested  |         ❌ None          |     ❌ None      |      ❌ None       |
+| **Contextual AI interpretation**         | ✅ Precomputed telemetry briefs |         ❌ None          |     ❌ None      |      ❌ None       |
+| **100% Free & Self-Hostable**            |         ✅ MIT Licensed         |       ✅ Built-in        | ❌ SaaS pricing  |    ✅ Free tool    |
 
-## Tech stack
+---
 
-Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS 4 · shadcn/ui ·
-NextAuth · Octokit · Recharts · Anthropic SDK · Vitest · Playwright + MSW ·
-Cloudflare Pages + D1 + Cron Triggers.
+## 🚀 Core Features
 
-## Deploy your own (Cloudflare)
+### 1. Instant Public Repository Intelligence (`/repo/[owner]/[repo]`)
 
-Hosted on **Cloudflare's free tier**: Pages (Next via `@opennextjs/cloudflare`),
-**D1** for snapshots, and a daily **Cron Worker** (`worker/snapshot.ts`).
+Enter any repository name or URL (`vercel/next.js`, `https://github.com/facebook/react`) to immediately inspect:
+
+- Total stargazers & forks
+- 7-day star growth & daily run-rate
+- 30-day star trajectory
+- Weekly velocity change percentage
+- Transparent 0–100 repository momentum score
+
+### 2. Deterministic Release Impact Timeline
+
+Releases are mapped directly over the star trajectory chart. A windowed comparison analyzes activity **14 days before vs. 14 days after** each release with strictly non-causal temporal association language:
+
+```text
+v2.1.0
+14 days before:   +520 stars (~37/day)
+14 days after:    +1,840 stars (~131/day)
+Star velocity:    +254%
+Status:           Growth accelerated around this release.
+```
+
+### 3. Multi-Repository Growth Comparison (`/compare`)
+
+Compare between 2 and 4 repositories simultaneously. Trajectories are visualized side-by-side with shareable URL state (`/compare?repos=vercel/next.js,nuxt/nuxt,sveltejs/svelte`).
+
+### 4. Long-Term Traffic Retention (Bypassing GitHub's 14-Day Limit)
+
+GitHub deletes traffic metrics (views, clones, referrers, and paths) after 14 days. When repository owners authenticate and enable tracking, an automated daily Cloudflare Cron Worker saves snapshots into Cloudflare **D1**, archiving your traffic history indefinitely.
+
+### 5. Contextual AI Actions (Explains Math, Never Hallucinates)
+
+No generic AI chatbots. Maintainers can trigger contextual briefings:
+
+- _Explain this growth_
+- _Explain this release period_
+- _What changed?_
+- _Summarize my traffic_
+
+AI receives precomputed structured numbers and explains trends without calculating math.
+
+---
+
+## 🏛️ Architecture
+
+```mermaid
+flowchart TD
+    subgraph PublicFlow["Public Intelligence Engine (No Login)"]
+        A[Developer enters owner/repo] --> B[Public GitHub API Service]
+        B --> C[Edge In-Memory LRU Cache]
+        C --> D[Deterministic Analytics Engine]
+        D --> E[Star History & Velocity Calculation]
+        D --> F[14d Release Impact Comparison]
+        D --> G[Repository Momentum Score]
+        E & F & G --> H["Public Web UI (/repo/[owner]/[repo])"]
+        E & F & G --> I["README SVG Card (/api/card/[owner]/[repo])"]
+        E & F & G --> J["OpenGraph Social Card (/repo/.../opengraph-image)"]
+    end
+
+    subgraph AuthenticatedFlow["Owner Retention Engine (OAuth Required)"]
+        K[Maintainer Signs in with GitHub] --> L[Encrypted httpOnly Session Cookie]
+        L --> M[Private Traffic API Proxy]
+        M --> N[Views, Clones, Referrers, Paths]
+        O[Daily Cloudflare Cron Worker] --> P[Cloudflare D1 SQLite Database]
+        P --> Q[Multi-Month Historical Charts]
+    end
+```
+
+---
+
+## 💻 Quickstart (Local Development)
+
+### Prerequisites
+
+- Node.js 20+
+- pnpm 10+ (`npm install -g pnpm`)
+
+### Setup
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/aliammari1/github-traffic-analytics.git
+cd github-traffic-analytics
+
+# 2. Install dependencies
+pnpm install
+
+# 3. Configure environment
+cp .env.example .env.local
+
+# 4. Start local development server
+pnpm dev
+# App will be running at http://localhost:3000
+```
+
+### Environment Variables
+
+| Variable               |              Required              | Description                                                                                                |
+| :--------------------- | :--------------------------------: | :--------------------------------------------------------------------------------------------------------- |
+| `NEXTAUTH_SECRET`      |                Yes                 | Session encryption secret (`openssl rand -base64 32`)                                                      |
+| `NEXTAUTH_URL`         |                Yes                 | Web application URL (`http://localhost:3000` locally)                                                      |
+| `GITHUB_CLIENT_ID`     |                Yes                 | GitHub OAuth App Client ID                                                                                 |
+| `GITHUB_CLIENT_SECRET` |                Yes                 | GitHub OAuth App Client Secret                                                                             |
+| `GITHUB_PUBLIC_TOKEN`  | Recommended for public deployments | Server-only read-only token that raises GitHub API capacity for public analysis; never sent to the browser |
+| `ANTHROPIC_API_KEY`    |              Optional              | Enables contextual AI explanations (`claude-haiku-4-5`)                                                    |
+
+> Note: Public repository intelligence works without OAuth. For a public deployment, configure `GITHUB_PUBLIC_TOKEN` so the analyzer does not rely on GitHub's small unauthenticated API quota. OAuth is only needed for owner features such as private traffic and tracking.
+
+---
+
+## 🚢 Deployment
+
+### Deploy to Cloudflare Pages (Recommended)
+
+This platform is designed to run completely on **Cloudflare's Free Tier**:
+
+- **Pages**: Next.js 16 via `@opennextjs/cloudflare`
+- **D1 Database**: Serverless SQLite for long-term daily snapshots
+- **Cron Worker**: Scheduled daily execution (`worker/snapshot.ts`)
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/aliammari1/github-traffic-analytics)
 
-One click clones the repo to your account and provisions the Worker; you then
-create the D1 database (`wrangler d1 create traffic_analytics`) and set the
-OAuth/Anthropic secrets. The full step-by-step (D1 schema, cron worker, gated CI
-deploy) lives in [`docs/`](docs/) (Nextra) → **Deployment**.
+Detailed step-by-step setup guides can be found in [`docs/`](docs/).
 
-CI deploy is gated on `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` and the
-`ENABLE_CF_DEPLOY` repo variable — forks and this repo never auto-deploy.
+---
 
-## Show your traffic off (embeddable badge)
+## 🧪 Testing & Quality Gates
 
-See [**⚡ Add a live traffic badge to your README**](#-add-a-live-traffic-badge-to-your-readme)
-above for the snippet. The badge renders a Shields-style SVG of total views since
-you started tracking — the number GitHub throws away after 14 days — and is
-edge-cached + rate-limited. Endpoint contract: [`docs/`](docs/) → **Features →
-Traffic badge**. A no-host **GitHub Action** version is coming in Wave 2.
+```bash
+pnpm lint            # ESLint CLI
+pnpm typecheck       # TypeScript compilation check
+pnpm test:coverage   # Vitest unit/component tests (80% minimum coverage gate)
+pnpm test:e2e        # Playwright end-to-end tests (MSW-mocked)
+pnpm build           # Next.js production build
+```
 
-## How I beat GitHub's 14-day limit
+---
 
-GitHub's traffic API is a sliding 14-day window — older data is gone forever.
-The fix is unglamorous and reliable: a **daily Cloudflare Cron Worker** snapshots
-each tracked repo's views/clones into **D1**, so history accumulates indefinitely
-from day one of tracking. Write-up:
-[_How I beat GitHub's 14-day traffic limit_](docs/) (Architecture → Daily snapshots).
+## 🤝 Contributing
 
-## Engineering decisions
+We welcome community contributions! Please read our [**Contributing Guide**](CONTRIBUTING.md) to understand our codebase structure, how to add new metrics, and how to create new growth card themes.
 
-- **Cloudflare over Vercel** — Pages + D1 + Cron Triggers natively support the
-  snapshot feature on one free platform.
-- **pnpm over Bun** — reproducible lockfile and first-class CI setup.
-- **Typed `TrafficAccessError`** instead of matching a localized error string, so
-  the previous French-vs-English 403 bug cannot recur.
+---
 
-## Documentation
-
-Full docs live in [`docs/`](docs/) as a Nextra site (Getting Started, Features,
-Architecture, Deployment). Build locally with `cd docs && pnpm install && pnpm dev`.
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md). PR titles follow
-[Conventional Commits](https://www.conventionalcommits.org/) (enforced in CI).
-
-## Related projects
-
-Part of a wider open-source toolkit by [@aliammari1](https://github.com/aliammari1):
-
-- [**awesome-ai-tools**](https://github.com/aliammari1/awesome-ai-tools) — a curated, weekly-updated index of AI tools.
-- [**JobPrep**](https://github.com/aliammari1/JobPrep) — open-source, BYOK AI interview-prep platform (Final Round AI alternative).
-- [**Leetcode_problems**](https://github.com/aliammari1/Leetcode_problems) — solutions including real wrong/TLE submissions.
-
-⭐ If this saved your traffic history, a star helps others find it.
-
-## License
+## 📜 License
 
 [MIT](LICENSE) © Ali Ammari.

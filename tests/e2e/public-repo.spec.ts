@@ -23,7 +23,7 @@ test.describe("Public Repository Growth Intelligence", () => {
 
     // Verify hero positioning
     await expect(
-      page.getByRole("heading", { name: "Understand why a GitHub repository is growing." })
+      page.getByRole("heading", { name: "Understand why GitHub repositories grow." })
     ).toBeVisible();
 
     // 2. Click the vercel/next.js example button
@@ -40,6 +40,12 @@ test.describe("Public Repository Growth Intelligence", () => {
     // 5. Verify Overview highlights
     await expect(page.getByText("What Changed & Growth Highlights")).toBeVisible();
     await expect(page.getByText(/Added 500 stars over the last 30 days/)).toBeVisible();
+
+    // A public report can be distributed through its link and README card.
+    await expect(page.getByRole("button", { name: "Share" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Copy link" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Copy Markdown card" })).toBeVisible();
+    await expect(page.locator('img[src*="/api/card/vercel/next.js"]')).toBeVisible();
 
     // 6. Navigate to Star History tab
     await page.getByRole("tab", { name: /Star/i }).click();

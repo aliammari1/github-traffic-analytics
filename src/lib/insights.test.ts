@@ -135,4 +135,62 @@ describe("buildInsightsPrompt", () => {
     expect(prompt).not.toContain("Top referrers");
     expect(prompt).not.toContain("Top pages");
   });
+
+  it("builds growth analysis prompt when promptType is growth", () => {
+    const payload = parseTrafficPayload({
+      ...validBody,
+      promptType: "growth",
+      context: {
+        repoName: "facebook/react",
+        currentStars: 220000,
+        stars7d: 500,
+        stars30d: 2000,
+        weeklyVelocityChange: 25,
+      },
+    });
+    const prompt = buildInsightsPrompt(payload);
+    expect(prompt).toContain("Analyze star growth trajectory for repository facebook/react");
+    expect(prompt).toContain("7-day star growth: +500");
+    expect(prompt).toContain("Weekly velocity change: 25%");
+  });
+
+  it("builds release analysis prompt when promptType is release", () => {
+    const payload = parseTrafficPayload({
+      ...validBody,
+      promptType: "release",
+      context: {
+        repoName: "facebook/react",
+        release: {
+          tag: "v19.0.0",
+          name: "React 19",
+          daysAgo: 10,
+          beforeStars: 800,
+          afterStars: 2500,
+          velocityChangePercent: 212,
+        },
+      },
+    });
+    const prompt = buildInsightsPrompt(payload);
+    expect(prompt).toContain("Analyze the release period for repository facebook/react");
+    expect(prompt).toContain("Release tag: v19.0.0 (React 19)");
+    expect(prompt).toContain("Velocity change around release: 212%");
+    expect(prompt).toContain("temporal association, not direct causation");
+  });
+
+  it("builds change analysis prompt when promptType is change", () => {
+    const payload = parseTrafficPayload({
+      ...validBody,
+      promptType: "change",
+      context: {
+        repoName: "facebook/react",
+        currentStars: 220000,
+        stars7d: 500,
+        stars30d: 2000,
+        weeklyVelocityChange: -10,
+      },
+    });
+    const prompt = buildInsightsPrompt(payload);
+    expect(prompt).toContain("Summarize key recent growth and trajectory changes");
+    expect(prompt).toContain("Velocity change: -10%");
+  });
 });

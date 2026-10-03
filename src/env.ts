@@ -15,6 +15,7 @@ const serverEnvSchema = z.object({
   NEXTAUTH_URL: z.url().optional(),
   GITHUB_CLIENT_ID: z.string().min(1, "GITHUB_CLIENT_ID is required"),
   GITHUB_CLIENT_SECRET: z.string().min(1, "GITHUB_CLIENT_SECRET is required"),
+  GITHUB_PUBLIC_TOKEN: z.string().min(1).optional(),
   ANTHROPIC_API_KEY: z.string().min(1).optional(),
 });
 
@@ -25,6 +26,7 @@ const runtimeEnv = {
   NEXTAUTH_URL: process.env.NEXTAUTH_URL,
   GITHUB_CLIENT_ID: process.env.GITHUB_CLIENT_ID,
   GITHUB_CLIENT_SECRET: process.env.GITHUB_CLIENT_SECRET,
+  GITHUB_PUBLIC_TOKEN: process.env.GITHUB_PUBLIC_TOKEN,
   ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
 };
 

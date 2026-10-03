@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: MIT
+name: Analytics metric idea
+description: Propose a new deterministic growth metric or trajectory calculation
+labels: ["analytics", "enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        All metrics in this project are computed using deterministic pure TypeScript functions in `src/lib/analytics.ts`.
+        Metrics must not rely on LLMs to calculate math, must avoid false causal claims, and must be unit-tested.
+  - type: input
+    id: metric_name
+    attributes:
+      label: Metric Name
+      description: Name of the proposed metric (e.g., "7-Day Star Acceleration", "Release Lift Index")
+      placeholder: Stargazer Churn Ratio
+    validations:
+      required: true
+  - type: textarea
+    id: formula
+    attributes:
+      label: Mathematical Formula / Logic
+      description: Describe the exact deterministic calculation.
+      placeholder: |
+        Given:
+        - window1 = stars gained in days [0..7]
+        - window2 = stars gained in days [7..14]
+        Formula:
+        ...
+    validations:
+      required: true
+  - type: textarea
+    id: interpretation
+    attributes:
+      label: Interpretation & Non-causal wording
+      description: How should this metric be explained to developers without asserting false causality?
+      placeholder: 'Use "Growth accelerated around..." rather than "This event caused..."'
+    validations:
+      required: true
+  - type: textarea
+    id: data_source
+    attributes:
+      label: GitHub API Data Sources Required
+      description: What public or private GitHub endpoints provide the necessary telemetry?
+    validations:
+      required: false

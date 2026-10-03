@@ -6,10 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession, signIn } from "next-auth/react";
-import { Repository } from "@/lib/github";
 import { parseRepoInput } from "@/lib/analytics";
-import RepositorySelector from "@/components/RepositorySelector";
-import TrafficDashboard from "@/components/TrafficDashboard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,12 +16,11 @@ import { Github } from "lucide-brands";
 const EXAMPLE_REPOS = ["facebook/react", "vercel/next.js", "astral-sh/ruff"];
 
 export default function HomePage() {
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
   const router = useRouter();
 
   const [inputVal, setInputVal] = useState("");
   const [inputError, setInputError] = useState<string | null>(null);
-  const [selectedRepository, setSelectedRepository] = useState<Repository | null>(null);
 
   const handleAnalyze = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -50,156 +46,52 @@ export default function HomePage() {
     }
   };
 
-  if (status === "loading") {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-muted-foreground">Loading…</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Authenticated State
-  if (session) {
-    return (
-      <div className="min-h-screen bg-background text-foreground">
-        {/* Header */}
-        <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-sm">
-          <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-            <div className="flex items-center gap-6">
-              <Link href="/" className="flex items-center gap-2 font-semibold">
-                <BarChart3 className="h-5 w-5 text-cyan-400" />
-                <span>GitHub Traffic Analytics</span>
+  // Public analysis is the first interaction for every visitor.
+  return (
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
+      {/* Top Header */}
+      <header className="border-b border-border/50 bg-background/80 backdrop-blur-sm sticky top-0 z-50">
+        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <Link href="/" className="flex items-center gap-2 font-semibold">
+              <BarChart3 className="h-5 w-5 text-cyan-400" />
+              <span>GitHub Traffic Analytics</span>
+            </Link>
+            <nav className="hidden md:flex items-center gap-4 text-sm">
+              <Link href="/" className="text-foreground font-medium transition-colors">
+                Explore
               </Link>
-              <nav className="hidden md:flex items-center gap-4 text-sm">
-                <Link
-                  href="/traffic"
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Overview
-                </Link>
+              <Link
+                href="/compare"
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Compare
+              </Link>
+              {session && (
                 <Link
                   href="/repositories"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
                   Repositories
                 </Link>
-              </nav>
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-muted-foreground">
-                {session.user?.name || session.user?.email}
-              </span>
-              <div className="w-8 h-8 rounded-full bg-secondary overflow-hidden">
-                {session.user?.image ? (
-                  <Image
-                    src={session.user.image}
-                    alt={session.user.name || "User avatar"}
-                    width={32}
-                    height={32}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-xs">
-                    {session.user?.name?.[0] || "U"}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </header>
-
-        <main className="max-w-6xl mx-auto px-6 py-8 space-y-8">
-          {/* Quick Public Analyzer Bar for Signed-in Users */}
-          <Card className="border-border/60 bg-card/40">
-            <CardContent className="pt-6">
-              <form onSubmit={handleAnalyze} className="flex flex-col sm:flex-row gap-3">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="text"
-                    value={inputVal}
-                    onChange={(e) => {
-                      setInputVal(e.target.value);
-                      if (inputError) setInputError(null);
-                    }}
-                    placeholder="Analyze any public repo (e.g. vercel/next.js or URL)…"
-                    className="pl-10 h-10"
-                    aria-label="Repository input"
-                  />
-                </div>
-                <Button type="submit" size="default" className="gap-2 shrink-0">
-                  <BarChart3 className="h-4 w-4" />
-                  Analyze
-                </Button>
-              </form>
-              {inputError && (
-                <p className="text-xs text-destructive mt-2" role="alert">
-                  {inputError}
-                </p>
               )}
-            </CardContent>
-          </Card>
-
-          {/* 14-day limit retention onboarding banner */}
-          <div className="rounded-lg border border-amber-500/20 bg-amber-950/10 p-4 flex items-start gap-3">
-            <Clock className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
-            <div className="text-sm">
-              <p className="font-medium text-foreground">
-                GitHub only keeps traffic data for 14 days.
-              </p>
-              <p className="text-muted-foreground text-xs mt-0.5">
-                Enable historical tracking on your repositories below so daily snapshots accumulate
-                permanently in Cloudflare D1.
-              </p>
-            </div>
+            </nav>
           </div>
-
-          {selectedRepository ? (
-            <TrafficDashboard
-              repository={selectedRepository}
-              onBack={() => setSelectedRepository(null)}
-            />
+          {session ? (
+            <Button asChild variant="outline" size="sm">
+              <Link href="/repositories">My repositories</Link>
+            </Button>
           ) : (
-            <div className="space-y-6">
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight mb-1">Your Repositories</h1>
-                <p className="text-sm text-muted-foreground">
-                  Select a repository to view its 14-day traffic dashboard or click Analyze on any
-                  repo.
-                </p>
-              </div>
-
-              <RepositorySelector onRepositorySelect={setSelectedRepository} />
-            </div>
+            <Button onClick={() => signIn("github")} variant="outline" size="sm" className="gap-2">
+              <Github className="h-4 w-4" /> Sign in
+            </Button>
           )}
-        </main>
-      </div>
-    );
-  }
-
-  // Unauthenticated / Public Product State
-  return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
-      {/* Top Header */}
-      <header className="border-b border-border/50 bg-background/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2 font-semibold">
-            <BarChart3 className="h-5 w-5 text-cyan-400" />
-            <span>GitHub Traffic Analytics</span>
-          </div>
-          <Button onClick={() => signIn("github")} variant="outline" size="sm" className="gap-2">
-            <Github className="h-4 w-4" />
-            Sign in
-          </Button>
         </div>
       </header>
 
       {/* Hero Section: Analyze Any Repository */}
       <main className="flex-1">
-        <section className="pt-24 pb-16 px-6">
+        <section className="pt-20 pb-12 px-6">
           <div className="max-w-3xl mx-auto text-center space-y-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border/60 bg-secondary/50 text-xs text-muted-foreground">
               <Sparkles className="h-3.5 w-3.5 text-cyan-400" />
@@ -207,16 +99,16 @@ export default function HomePage() {
             </div>
 
             <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight leading-tight">
-              Understand why a GitHub repository is growing.
+              Understand why GitHub repositories grow.
             </h1>
 
             <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-              Track long-term repository growth, preserve traffic GitHub deletes after 14 days, and
-              understand what changed.
+              Explore star growth, releases, momentum and public repository trends. Repository
+              owners can also preserve private traffic beyond GitHub&apos;s 14-day limit.
             </p>
 
             {/* Analysis Input Box */}
-            <div className="pt-4 max-w-xl mx-auto">
+            <div className="pt-2 max-w-xl mx-auto">
               <form onSubmit={handleAnalyze} className="flex flex-col sm:flex-row gap-2">
                 <div className="relative flex-1">
                   <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -246,7 +138,7 @@ export default function HomePage() {
 
               {/* Clickable Examples */}
               <div className="flex items-center justify-center gap-2 mt-4 text-xs text-muted-foreground flex-wrap">
-                <span>Examples:</span>
+                <span>Popular examples:</span>
                 {EXAMPLE_REPOS.map((ex) => (
                   <button
                     key={ex}
@@ -259,6 +151,90 @@ export default function HomePage() {
                 ))}
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* Live Product Demonstration Preview */}
+        <section className="pb-16 px-6">
+          <div className="max-w-4xl mx-auto">
+            <Card className="border-cyan-500/20 bg-gradient-to-b from-card/80 via-card/50 to-background shadow-xl">
+              <CardContent className="p-6 md:p-8 space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/60 pb-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                        Interactive Sample Preview
+                      </span>
+                      <span className="text-xs text-muted-foreground">vercel/next.js</span>
+                    </div>
+                    <h2 className="text-lg font-bold mt-1 text-foreground">
+                      What Changed & Growth Highlights
+                    </h2>
+                  </div>
+                  <Button asChild variant="outline" size="sm" className="gap-1.5 text-xs shrink-0">
+                    <Link href="/repo/vercel/next.js">
+                      <span>View Live vercel/next.js Report</span>
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
+                  </Button>
+                </div>
+
+                {/* Metric Summary Chips */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="p-3 rounded-lg border border-border bg-secondary/30">
+                    <span className="text-xs text-muted-foreground">Total Stars</span>
+                    <div className="text-xl font-bold flex items-center gap-1 mt-0.5">
+                      <Star className="h-3.5 w-3.5 text-amber-400 fill-amber-400" />
+                      <span>125,000</span>
+                    </div>
+                  </div>
+                  <div className="p-3 rounded-lg border border-border bg-secondary/30">
+                    <span className="text-xs text-muted-foreground">30-Day Growth</span>
+                    <div className="text-xl font-bold text-foreground mt-0.5">+500</div>
+                  </div>
+                  <div className="p-3 rounded-lg border border-border bg-secondary/30">
+                    <span className="text-xs text-muted-foreground">Weekly Velocity</span>
+                    <div className="text-xl font-bold text-cyan-400 mt-0.5">~120 / wk</div>
+                  </div>
+                  <div className="p-3 rounded-lg border border-border bg-secondary/30">
+                    <span className="text-xs text-muted-foreground">Latest Release</span>
+                    <div className="text-sm font-semibold font-mono text-foreground mt-1 truncate">
+                      v16.0.0
+                    </div>
+                  </div>
+                </div>
+
+                {/* Deterministic Insights Preview */}
+                <div className="rounded-lg border border-border/80 bg-background/60 p-4 space-y-2">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Deterministic Findings
+                  </span>
+                  <ul className="space-y-1.5 text-xs text-muted-foreground">
+                    <li className="flex items-start gap-2">
+                      <span className="text-cyan-400 font-bold">•</span>
+                      <span>
+                        Added 500 stars over the last 30 days (~120 stars/week), reaching 125,000
+                        total stars.
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-cyan-400 font-bold">•</span>
+                      <span>
+                        Recent release v16.0.0 published on 2026-09-15; growth activity tracked
+                        around this release.
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-cyan-400 font-bold">•</span>
+                      <span>
+                        Historical persistence is not enabled yet for this repository; GitHub will
+                        delete traffic data older than 14 days.
+                      </span>
+                    </li>
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </section>
 
@@ -323,11 +299,18 @@ export default function HomePage() {
             </div>
 
             <div className="flex justify-center">
-              <Button onClick={() => signIn("github")} size="lg" className="gap-2">
-                <Github className="h-4 w-4" />
-                Continue with GitHub
-                <ArrowRight className="h-4 w-4" />
-              </Button>
+              {session ? (
+                <Button asChild size="lg">
+                  <Link href="/repositories">
+                    Open my repositories <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+              ) : (
+                <Button onClick={() => signIn("github")} size="lg" className="gap-2">
+                  <Github className="h-4 w-4" /> Continue with GitHub{" "}
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           </div>
         </section>

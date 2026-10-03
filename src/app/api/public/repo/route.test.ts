@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
-import { GET } from "./route";
+import { GET, checkIpRateLimit, resetIpRateLimit } from "./route";
 import {
   publicGitHub,
   PublicRepoError,
@@ -95,7 +95,19 @@ describe("GET /api/public/repo", () => {
     expect(body.error).toContain("Failed to analyze repository");
   });
 
-  it("enforces sliding-window IP rate limit", async () => {
+  it("prefers cf-connecting-ip header over x-forwarded-for", async () => {
+    vi.mocked(publicGitHub.analyzePublicRepository).mockResolvedValue({} as any);
+    const headers = new Headers();
+    headers.set("cf-connecting-ip", "198.51.100.50");
+    headers.set("x-forwarded-for", "1.2.3.4, 5.6.7.8");
+    const res = await GET(
+      new NextRequest(new Request("http://localhost/api/public/repo?owner=a&repo=b", { headers }))
+    );
+    expect(res.status).toBe(200);
+  });
+
+  it("enforces sliding-window IP rate limit and resets after window expires", async () => {
+    vi.useFakeTimers();
     const testIp = "203.0.113.199";
     vi.mocked(publicGitHub.analyzePublicRepository).mockResolvedValue({} as any);
 
@@ -110,5 +122,24 @@ describe("GET /api/public/repo", () => {
     expect(limitedRes.status).toBe(429);
     const body = await limitedRes.json();
     expect(body.error).toContain("Too many requests from your IP");
+
+    // Advance clock past the 60s sliding window
+    vi.advanceTimersByTime(61_000);
+
+    // Request should now succeed again
+    const postExpiryRes = await GET(req("http://localhost/api/public/repo?owner=a&repo=b", testIp));
+    expect(postExpiryRes.status).toBe(200);
+
+    vi.useRealTimers();
+  });
+
+  it("prunes expired IP entries when table capacity is exceeded", () => {
+    resetIpRateLimit();
+    const now = 1_000_000;
+    for (let i = 0; i < 5000; i++) {
+      checkIpRateLimit(`ip-${i}`, 60, 1000, now);
+    }
+    const allowed = checkIpRateLimit("new-ip", 60, 1000, now + 2000);
+    expect(allowed).toBe(true);
   });
 });

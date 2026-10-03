@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: MIT
+name: Growth card theme
+description: Propose a new color theme for the embeddable README growth card (/api/card)
+labels: ["card-theme", "design"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Growth cards are zero-dependency SVGs rendered dynamically by `/api/card/[owner]/[repo]?theme=<name>`.
+        Themes must maintain high readability and WCAG AA contrast against their background.
+  - type: input
+    id: theme_name
+    attributes:
+      label: Theme name
+      description: Lowercase identifier (e.g., `catppuccin`, `dracula`, `nord`, `tokyo-night`)
+      placeholder: my-theme
+    validations:
+      required: true
+  - type: textarea
+    id: color_palette
+    attributes:
+      label: Color Palette
+      description: Specify hex colors for background, border, primary text, muted text, accent, and star badge.
+      placeholder: |
+        - Background: #...
+        - Border: #...
+        - Primary text: #...
+        - Muted text: #...
+        - Accent: #...
+        - Star color: #...
+    validations:
+      required: true
+  - type: textarea
+    id: sample_preview
+    attributes:
+      label: Preview / References
+      description: Link to theme upstream palette, screenshot, or sample mockup.
+    validations:
+      required: false

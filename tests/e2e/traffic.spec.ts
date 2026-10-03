@@ -10,8 +10,15 @@ import { test, expect, type Page } from "@playwright/test";
  * This is the Playwright equivalent of the MSW mocking used in the component tests.
  */
 
+import { MOCK_PUBLIC_ANALYSIS } from "./fixtures";
+
 const SESSION = {
-  user: { id: "123", name: "alice", email: "alice@example.com", image: "https://example.com/a.png" },
+  user: {
+    id: "123",
+    name: "alice",
+    email: "alice@example.com",
+    image: "https://example.com/a.png",
+  },
   expires: "2999-01-01T00:00:00.000Z",
 };
 
@@ -53,26 +60,46 @@ async function mockBackend(page: Page) {
   await page.route("**/api/auth/session", (route) => route.fulfill({ json: SESSION }));
   await page.route("**/api/repositories", (route) => route.fulfill({ json: REPOS }));
   await page.route("**/api/traffic**", (route) => route.fulfill({ json: TRAFFIC }));
+  await page.route("**/api/public/repo**", (route) =>
+    route.fulfill({
+      json: {
+        ...MOCK_PUBLIC_ANALYSIS,
+        repository: {
+          ...MOCK_PUBLIC_ANALYSIS.repository,
+          name: "repo-one",
+          fullName: "alice/repo-one",
+          owner: { login: "alice", avatarUrl: "https://example.com/a.png" },
+        },
+      },
+    })
+  );
   // No D1 in e2e: the historical surface degrades gracefully on a 503.
   await page.route("**/api/snapshots**", (route) =>
-    route.fulfill({ status: 503, json: { error: "Historical snapshots require the Cloudflare D1 deployment." } })
+    route.fulfill({
+      status: 503,
+      json: { error: "Historical snapshots require the Cloudflare D1 deployment." },
+    })
   );
 }
 
 test("signed-in user selects a repo and views its traffic", async ({ page }) => {
   await mockBackend(page);
   await page.goto("/");
-
-  // Signed-in home shows the repository selector heading.
-  await expect(page.getByRole("heading", { name: "Your Repositories" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Understand why GitHub repositories grow." })
+  ).toBeVisible();
+  await page.goto("/repositories");
 
   // Select the repository.
   await page.getByText("repo-one").click();
 
   // Traffic dashboard renders the aggregate stats and chart for the repo.
   await expect(page.getByText("1,200")).toBeVisible();
-  await expect(page.getByText("Views over time")).toBeVisible();
-  await expect(page.getByText("github.com")).toBeVisible();
+  await expect(page.getByText("github.com").first()).toBeVisible();
+
+  // Navigate to Traffic tab for daily charts and historical traffic
+  await page.getByRole("tab", { name: /Traffic/i }).click();
+  await expect(page.getByText("Views Over Time (14 Days)")).toBeVisible();
   await expect(page.getByText("Historical traffic")).toBeVisible();
 });
 

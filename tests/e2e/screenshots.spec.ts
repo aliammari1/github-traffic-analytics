@@ -29,5 +29,10 @@ test.describe("Product Screenshots Capture", () => {
     // 3. Switch to Star History tab and capture
     await page.getByRole("tab", { name: /Star/i }).click();
     await page.screenshot({ path: "assets/screenshots/03-repo-stars.png", fullPage: false });
+
+    // 4. Capture comparison page
+    await page.goto("/compare?repos=vercel/next.js,nuxt/nuxt");
+    await page.waitForLoadState("networkidle");
+    await page.screenshot({ path: "assets/screenshots/04-repo-comparison.png", fullPage: true });
   });
 });

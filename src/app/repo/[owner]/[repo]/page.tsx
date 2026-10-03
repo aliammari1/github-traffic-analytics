@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 "use client";
 
-import { use, useState, useEffect } from "react";
+import { use, useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
@@ -27,9 +27,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import StarHistoryChart from "@/components/StarHistoryChart";
+import ShareActions from "@/components/ShareActions";
 import HistoricalTraffic from "@/components/HistoricalTraffic";
 import InsightsPanel from "@/components/InsightsPanel";
 import type { PublicRepoAnalysis } from "@/lib/github-public";
+import { calculateReleaseImpact } from "@/lib/analytics";
 import {
   LineChart,
   Line,
@@ -76,6 +78,17 @@ export default function RepositoryAnalyticsPage({
   const [privateTraffic, setPrivateTraffic] = useState<PrivateTrafficData | null>(null);
   const [hasPrivateAccess, setHasPrivateAccess] = useState(false);
   const [privateLoading, setPrivateLoading] = useState(false);
+  const [mountTime] = useState(() => Date.now());
+
+  const starHistory = useMemo(() => analysis?.starHistory ?? [], [analysis]);
+  const releases = useMemo(() => analysis?.releases ?? [], [analysis]);
+
+  const releaseImpacts = useMemo(() => {
+    return releases.map((rel) => ({
+      release: rel,
+      impact: calculateReleaseImpact(starHistory, rel),
+    }));
+  }, [releases, starHistory]);
 
   // 1. Fetch public analysis with cancellation flag to prevent race conditions
   useEffect(() => {
@@ -192,8 +205,8 @@ export default function RepositoryAnalyticsPage({
                 <Github className="h-4 w-4" /> Why did this happen?
               </h2>
               <p className="text-sm text-muted-foreground">
-                GitHub permits unauthenticated requests a shared quota of 60 requests per hour.
-                Please wait a short while or explore another repository.
+                This deployment has temporarily reached GitHub&apos;s API quota for repository
+                analysis. Please try again shortly or explore another repository.
               </p>
               <Button asChild variant="outline" className="w-full gap-2">
                 <Link href="/" className="gap-2">
@@ -215,7 +228,7 @@ export default function RepositoryAnalyticsPage({
     );
   }
 
-  const { repository: meta, starHistory, starVelocity, releases, highlights } = analysis;
+  const { repository: meta, starVelocity, highlights } = analysis;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -418,12 +431,14 @@ export default function RepositoryAnalyticsPage({
             </CardContent>
           </Card>
 
+          <ShareActions owner={owner} repo={repo} />
+
           {/* Public Star Growth Chart */}
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Community Trajectory</CardTitle>
               <CardDescription>
-                All-time star growth timeline with annotated major release milestones
+                Recent star growth timeline with annotated major release milestones
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -473,7 +488,7 @@ export default function RepositoryAnalyticsPage({
                       {privateTraffic.referrers[0]?.referrer || "None"}
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {privateTraffic.referrers[0]?.count.toLocaleString() ?? 0} views
+                      {(privateTraffic.referrers[0]?.count ?? 0).toLocaleString()} views
                     </p>
                   </CardContent>
                 </Card>
@@ -486,7 +501,7 @@ export default function RepositoryAnalyticsPage({
                       {privateTraffic.paths[0]?.path || "None"}
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {privateTraffic.paths[0]?.count.toLocaleString() ?? 0} views
+                      {(privateTraffic.paths[0]?.count ?? 0).toLocaleString()} views
                     </p>
                   </CardContent>
                 </Card>
@@ -634,7 +649,7 @@ export default function RepositoryAnalyticsPage({
               </div>
 
               {/* Long-term D1 Historical Traffic */}
-              <HistoricalTraffic owner={owner} repo={repo} />
+              {activeTab === "traffic" && <HistoricalTraffic owner={owner} repo={repo} />}
             </div>
           ) : (
             <PrivateUnlockCard
@@ -798,7 +813,7 @@ export default function RepositoryAnalyticsPage({
             <CardHeader>
               <CardTitle className="text-base">Star Growth Trajectory</CardTitle>
               <CardDescription>
-                Cumulative stargazers mapped over repository lifespan
+                Recent cumulative stargazer history from GitHub&apos;s public history data
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -830,39 +845,92 @@ export default function RepositoryAnalyticsPage({
                 </div>
               ) : (
                 <div className="divide-y divide-border">
-                  {releases.map((rel) => (
-                    <div
-                      key={rel.id}
-                      className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                    >
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-sm">{rel.name}</span>
-                          <Badge variant="outline" className="font-mono text-xs">
-                            {rel.tagName}
-                          </Badge>
-                          {rel.isPrerelease && (
-                            <Badge variant="secondary" className="text-xs">
-                              Pre-release
+                  {releaseImpacts.map(({ release: rel, impact }) => (
+                    <div key={rel.id} className="py-5 space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-sm">{rel.name}</span>
+                            <Badge variant="outline" className="font-mono text-xs">
+                              {rel.tagName}
                             </Badge>
-                          )}
+                            {rel.isPrerelease && (
+                              <Badge variant="secondary" className="text-xs">
+                                Pre-release
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            Published on {format(parseISO(rel.publishedAt), "MMMM d, yyyy")}
+                          </p>
                         </div>
-                        <p className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          Published on {format(parseISO(rel.publishedAt), "MMMM d, yyyy")}
-                        </p>
+                        <Button
+                          asChild
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5 text-xs shrink-0 self-start sm:self-auto"
+                        >
+                          <a href={rel.htmlUrl} target="_blank" rel="noopener noreferrer">
+                            <span>View on GitHub</span>
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        </Button>
                       </div>
-                      <Button
-                        asChild
-                        variant="outline"
-                        size="sm"
-                        className="gap-1.5 text-xs shrink-0"
-                      >
-                        <a href={rel.htmlUrl} target="_blank" rel="noopener noreferrer">
-                          <span>View Release</span>
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
-                      </Button>
+
+                      {impact ? (
+                        <div className="rounded-lg border border-border/70 bg-card p-4 space-y-3">
+                          <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                            <TrendingUp className="h-3.5 w-3.5 text-amber-400" />
+                            14-Day Window Impact Analysis
+                          </div>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                            <div className="rounded border border-border/50 bg-secondary/20 p-2.5">
+                              <span className="text-muted-foreground">14 Days Before</span>
+                              <div className="text-sm font-semibold text-foreground mt-0.5">
+                                +{impact.beforeStars.toLocaleString()} stars
+                              </div>
+                              <span className="text-[11px] text-muted-foreground">
+                                ~{impact.beforeDailyVelocity}/day
+                              </span>
+                            </div>
+                            <div className="rounded border border-border/50 bg-secondary/20 p-2.5">
+                              <span className="text-muted-foreground">14 Days After</span>
+                              <div className="text-sm font-semibold text-emerald-400 mt-0.5">
+                                +{impact.afterStars.toLocaleString()} stars
+                              </div>
+                              <span className="text-[11px] text-muted-foreground">
+                                ~{impact.afterDailyVelocity}/day
+                              </span>
+                            </div>
+                            <div className="col-span-2 sm:col-span-1 rounded border border-border/50 bg-secondary/20 p-2.5">
+                              <span className="text-muted-foreground">Star Velocity</span>
+                              <div className="text-sm font-semibold text-cyan-400 mt-0.5">
+                                {impact.velocityChangePercent !== null
+                                  ? `${impact.velocityChangePercent >= 0 ? "+" : ""}${impact.velocityChangePercent}%`
+                                  : "N/A"}
+                              </div>
+                              <span className="text-[11px] text-muted-foreground">
+                                velocity delta
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-xs text-muted-foreground bg-muted/30 rounded p-2 border border-border/40">
+                            <span className="font-medium text-foreground">
+                              {impact.associationLabel}
+                            </span>
+                            <span className="block text-[11px] text-muted-foreground/80 mt-0.5">
+                              Observed temporal association around release window, not causal
+                              attribution.
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-xs text-muted-foreground/80 bg-secondary/10 rounded p-2.5 border border-border/40">
+                          14-day post-release observation window is either in progress (&lt;14 days
+                          elapsed) or outside available continuous stargazer history.
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -895,6 +963,32 @@ export default function RepositoryAnalyticsPage({
                   views: v.count,
                   uniques: v.uniques,
                 })),
+                context: {
+                  repoName: meta.fullName,
+                  currentStars: meta.starsCount,
+                  stars7d: starVelocity.growth7d,
+                  stars30d: starVelocity.growth30d,
+                  weeklyVelocityChange:
+                    starVelocity.growth30d > 0
+                      ? Math.round(
+                          ((starVelocity.growth7d - (starVelocity.growth30d * 7) / 30) /
+                            Math.max(1, (starVelocity.growth30d * 7) / 30)) *
+                            100
+                        )
+                      : null,
+                  release: releases[0]
+                    ? {
+                        tag: releases[0].tagName,
+                        name: releases[0].name,
+                        daysAgo: Math.max(
+                          0,
+                          Math.floor(
+                            (mountTime - new Date(releases[0].publishedAt).getTime()) / 86_400_000
+                          )
+                        ),
+                      }
+                    : null,
+                },
               }}
             />
           ) : (

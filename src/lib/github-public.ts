@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: MIT
+import { env } from "@/env";
 import {
   StarPoint,
   StarVelocityResult,
   calculateStarVelocity,
   generateChangeHighlights,
+  compareStarPeriods,
+  starsGained,
 } from "./analytics";
 
 /**
  * Public GitHub repository service.
- * Fetches unauthenticated public data (metadata, stargazers, releases) safely,
+ * Fetches unauthenticated public data (metadata, aggregate star history, releases) safely,
  * with edge/in-memory caching, rate-limit awareness, and deterministic velocity calculations.
  */
 
@@ -122,10 +125,12 @@ function setCache<T>(key: string, data: T, ttlMs = 300_000): void {
 export class PublicGitHubService {
   private baseUrl: string;
   private customFetch: typeof fetch;
+  private token?: string;
 
-  constructor(options?: { baseUrl?: string; fetchFn?: typeof fetch }) {
+  constructor(options?: { baseUrl?: string; fetchFn?: typeof fetch; token?: string }) {
     this.baseUrl = options?.baseUrl || "https://api.github.com";
     this.customFetch = options?.fetchFn || fetch;
+    this.token = options?.token ?? env.GITHUB_PUBLIC_TOKEN;
   }
 
   private async request<T>(
@@ -135,8 +140,10 @@ export class PublicGitHubService {
     const url = `${this.baseUrl}${endpoint}`;
     const res = await this.customFetch(url, {
       headers: {
-        Accept: "application/vnd.github.v3+json",
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2026-03-10",
         "User-Agent": "github-traffic-analytics/2.0.0",
+        ...(this.token ? { Authorization: "Bearer " + this.token } : {}),
         ...headers,
       },
     });
@@ -199,6 +206,10 @@ export class PublicGitHubService {
         license: data.license?.spdx_id || data.license?.name || null,
       };
 
+      if (data.private !== false && data.private !== undefined) {
+        throw new PublicRepoNotFoundError(owner, repo);
+      }
+
       setCache(cacheKey, metadata, 300_000);
       return metadata;
     } catch (err) {
@@ -211,7 +222,7 @@ export class PublicGitHubService {
   }
 
   async getRecentReleases(owner: string, repo: string, limit = 5): Promise<PublicRelease[]> {
-    const cacheKey = `releases:${owner}/${repo}`;
+    const cacheKey = `releases:${owner}/${repo}:${limit}`;
     const cached = getCached<PublicRelease[]>(cacheKey);
     if (cached) return cached;
 
@@ -255,121 +266,43 @@ export class PublicGitHubService {
     const cached = getCached<StarPoint[]>(cacheKey);
     if (cached) return cached;
 
-    const points: StarPoint[] = [];
-    const creationDate = createdAt.slice(0, 10);
     const today = new Date().toISOString().slice(0, 10);
-
-    // Initial creation milestone
-    points.push({ date: creationDate, stars: 0 });
-
     if (totalStars <= 0) {
-      return points;
+      return [{ date: today, stars: 0 }];
     }
+    const { data: history } = await this.request<
+      Array<{ week: number; total: number; days: number[] }>
+    >(
+      `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/stargazers/history?per_page=30`
+    );
+    if (
+      !Array.isArray(history) ||
+      history.length === 0 ||
+      history.some(
+        (week) => !Number.isFinite(week.week) || !Array.isArray(week.days) || week.days.length !== 7
+      )
+    )
+      return [];
 
-    let historyLoaded = false;
-
-    try {
-      // 1. Try privacy-safe star history endpoint first (official GitHub REST API)
-      const { data: history } = await this.request<
-        Array<{ week: number; total: number; days: number[] }>
-      >(`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/stargazers/history`);
-
-      if (Array.isArray(history) && history.length > 0) {
-        const weeks = [...history].reverse(); // oldest first
-        const totalGained = weeks.reduce(
-          (sum, w) => sum + (w.total ?? w.days.reduce((a, b) => a + b, 0)),
-          0
-        );
-        let runningStars = Math.max(0, totalStars - totalGained);
-
-        for (const w of weeks) {
-          w.days.forEach((gain, d) => {
-            runningStars += gain;
-            const dayDate = new Date((w.week + d * 86400) * 1000).toISOString().slice(0, 10);
-            if (dayDate <= today && dayDate >= creationDate) {
-              points.push({ date: dayDate, stars: runningStars });
-            }
-          });
+    const weeks = [...history].reverse();
+    const totalGained = weeks.reduce((sum, week) => sum + week.days.reduce((a, b) => a + b, 0), 0);
+    let runningStars = Math.max(0, totalStars - totalGained);
+    const oldestWeek = weeks[0].week * 1000;
+    const points: StarPoint[] = [
+      { date: new Date(oldestWeek - 86_400_000).toISOString().slice(0, 10), stars: runningStars },
+    ];
+    for (const week of weeks) {
+      week.days.forEach((gain, day) => {
+        const date = new Date((week.week + day * 86_400) * 1000).toISOString().slice(0, 10);
+        if (date <= today && date >= createdAt.slice(0, 10)) {
+          runningStars += gain;
+          points.push({ date, stars: runningStars });
         }
-        historyLoaded = true;
-      }
-    } catch (err) {
-      if (err instanceof PublicRepoRateLimitError) {
-        throw err;
-      }
-      // Non-rate-limit errors fall back to legacy sample below
+      });
     }
-
-    if (!historyLoaded) {
-      try {
-        // Fallback: sample initial stars and last page
-        const { data: firstPage } = await this.request<Array<{ starred_at: string }>>(
-          `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/stargazers?per_page=30&page=1&direction=asc`,
-          { Accept: "application/vnd.github.v3.star+json" }
-        );
-
-        if (Array.isArray(firstPage) && firstPage.length > 0) {
-          firstPage.forEach((item, index) => {
-            if (item.starred_at) {
-              points.push({
-                date: item.starred_at.slice(0, 10),
-                stars: index + 1,
-              });
-            }
-          });
-        }
-
-        if (totalStars > 30) {
-          const lastPageNum = Math.min(Math.ceil(totalStars / 30), 100);
-          try {
-            const { data: lastPage } = await this.request<Array<{ starred_at: string }>>(
-              `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/stargazers?per_page=30&page=${lastPageNum}&direction=asc`,
-              { Accept: "application/vnd.github.v3.star+json" }
-            );
-
-            if (Array.isArray(lastPage) && lastPage.length > 0) {
-              const baseCount = (lastPageNum - 1) * 30;
-              lastPage.forEach((item, index) => {
-                if (item.starred_at) {
-                  points.push({
-                    date: item.starred_at.slice(0, 10),
-                    stars: baseCount + index + 1,
-                  });
-                }
-              });
-            }
-          } catch (innerErr) {
-            if (innerErr instanceof PublicRepoRateLimitError) {
-              throw innerErr;
-            }
-          }
-        }
-      } catch (err) {
-        if (err instanceof PublicRepoRateLimitError) {
-          throw err;
-        }
-        console.warn(`Failed to fetch star history for ${owner}/${repo}:`, err);
-      }
-    }
-
-    // Always ensure current date + total stars is represented
-    points.push({ date: today, stars: totalStars });
-
-    // Deduplicate by date keeping maximum stars for that date, then sort
-    const dateMap = new Map<string, number>();
-    for (const p of points) {
-      const existing = dateMap.get(p.date) ?? 0;
-      if (p.stars >= existing) {
-        dateMap.set(p.date, p.stars);
-      }
-    }
-
-    const consolidated: StarPoint[] = Array.from(dateMap.entries())
-      .map(([date, stars]) => ({ date, stars }))
-      .sort((a, b) => a.date.localeCompare(b.date));
-
-    setCache(cacheKey, consolidated, 300_000);
-    return consolidated;
+    if (points[points.length - 1].date < today) points.push({ date: today, stars: totalStars });
+    setCache(cacheKey, points, 3_600_000);
+    return points;
   }
 
   async analyzePublicRepository(owner: string, repo: string): Promise<PublicRepoAnalysis> {
@@ -383,7 +316,7 @@ export class PublicGitHubService {
       if (err instanceof PublicRepoRateLimitError) {
         isRateLimited = true;
       } else {
-        throw err;
+        console.warn(`Releases unavailable for ${owner}/${repo}:`, err);
       }
     }
 
@@ -392,14 +325,11 @@ export class PublicGitHubService {
       starHistory = await this.getStarHistory(owner, repo, metadata.starsCount, metadata.createdAt);
     } catch (err) {
       if (err instanceof PublicRepoRateLimitError) {
-        isRateLimited = true;
-        starHistory = [
-          { date: metadata.createdAt.slice(0, 10), stars: 0 },
-          { date: new Date().toISOString().slice(0, 10), stars: metadata.starsCount },
-        ];
-      } else {
+        // Star history powers the core growth metrics. Returning an empty series here
+        // would make a rate-limit failure look like legitimate zero growth.
         throw err;
       }
+      console.warn(`Star history unavailable for ${owner}/${repo}:`, err);
     }
 
     const starVelocity = calculateStarVelocity(starHistory, metadata.starsCount);
@@ -409,7 +339,8 @@ export class PublicGitHubService {
     const highlights = generateChangeHighlights({
       repoName: metadata.name,
       currentStars: metadata.starsCount,
-      starVelocity,
+      starVelocity: starsGained(starHistory, 7) === null ? undefined : starVelocity,
+      starVelocityChangePercent: compareStarPeriods(starHistory, 7).changePercent,
       recentRelease,
       isTrackingEnabled: false, // Public viewer baseline
     });

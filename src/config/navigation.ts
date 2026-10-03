@@ -6,18 +6,18 @@ export interface NavigationItem {
 
 export const NAVIGATION_ITEMS: NavigationItem[] = [
   {
-    name: "Analyze",
+    name: "Explore",
     href: "/",
     description: "Public repository analysis and growth intelligence",
   },
   {
-    name: "Overview",
-    href: "/traffic",
-    description: "Portfolio traffic overview across your tracked repositories",
+    name: "Compare",
+    href: "/compare",
+    description: "Side-by-side star growth and momentum comparison",
   },
   {
     name: "Repositories",
     href: "/repositories",
-    description: "View and manage your GitHub repositories",
+    description: "View and manage your tracked GitHub repositories",
   },
 ];

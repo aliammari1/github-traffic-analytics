@@ -1,91 +1,95 @@
-# 📊 GitHub Traffic Analytics — Product Roadmap (2026)
+<!-- SPDX-License-Identifier: MIT -->
 
-> A GitHub growth intelligence platform that explains why repositories are growing, preserves analytics GitHub deletes after 14 days, and provides clear briefings when something meaningful changes.
+# 🗺️ Product Roadmap: GitHub Traffic Analytics
 
----
-
-## 🎯 Product Positioning
-
-- **Core Promise:** See what is driving your GitHub repository's growth, preserve the analytics GitHub deletes after 14 days, and understand what changed.
-- **Key Differentiator:**
-  1. Long-term traffic history beyond GitHub's 14-day retention window.
-  2. Public-first repository analytics without requiring login.
-  3. Star growth velocity and release event correlation.
-  4. Deterministic explanations and contextual AI insights rather than raw charts.
+> Understand why GitHub repositories grow.
+>
+> Track star trajectory, measure release impact, compare repositories, and preserve private traffic analytics beyond GitHub's 14-day limit.
 
 ---
 
-## 🚀 Status & Roadmap
+## 🎯 Strategic Flywheel
 
+Our development priorities are organized around the open-source distribution loop:
+
+```text
+Developer discovers tool
+        ↓
+Analyzes any public repository without login
+        ↓
+Gets instant star velocity & release insights
+        ↓
+Shares interactive chart or embeds README card
+        ↓
+Other developers discover the project
+        ↓
+They analyze their own repositories
+        ↓
+More legitimate GitHub stars & organic adoption
 ```
-[Shipped: Core & Public Analytics] ──▶ [Next: Intelligence & Action] ──▶ [Later: Ecosystem & Distribution]
-```
 
-### 1. Shipped (Current Release)
+---
 
-#### Core Analytics & Persistence
+## 1. Shipped (What Works Today)
+
+### 🌟 Public Growth Intelligence Engine
+
+- [x] **Instant public repository analyzer** (`/repo/[owner]/[repo]`): Zero-login, unauthenticated growth intelligence for any public GitHub repository.
+- [x] **Deterministic star history & velocity**: 7-day star growth, 30-day growth, weekly run-rate, and moving-average velocity comparisons.
+- [x] **Repository momentum scoring**: Transparent 0–100 momentum score based on acceleration ratio damped by repository scale.
+- [x] **Release event timeline & impact**: Temporal association analysis comparing 14 days before vs. 14 days after release events with strictly non-causal language.
+- [x] **Multi-repository comparison (`/compare`)**: Side-by-side growth trajectory comparison supporting 2–4 repositories with shareable URL state (`?repos=owner/repo,owner2/repo2`).
+- [x] **Embeddable README growth card (`/api/card/[owner]/[repo]`)**: Zero-dependency SVG growth cards with multiple themes (`github-dark`, `github-light`, `transparent`, `dracula`, `nord`, `catppuccin`) and one-click "Copy Markdown" action.
+- [x] **Dynamic OpenGraph social cards (`/repo/[owner]/[repo]/opengraph-image`)**: Native Next.js 16 Edge OpenGraph and Twitter cards for rich unfurls on X, LinkedIn, Discord, and Slack.
+- [x] **Contextual AI explanations**: Structured LLM insights (`claude-haiku-4-5`) explaining precomputed telemetry without hallucinating math.
+
+### 🔒 Private Traffic Retention
 
 - [x] **14-day window bypass**: Daily automated Cloudflare Cron Worker snapshotting views and clones into Cloudflare D1.
-- [x] **Traffic dashboard**: Interactive views, clones, top referrers, and popular content paths.
-- [x] **Public repository analyzer**: Instant analysis of any public repository (`owner/repo` or full GitHub URL) without authentication.
-- [x] **Star history & velocity**: Real-time star trajectory, 7-day/30-day growth, and current weekly velocity.
-- [x] **Release event timeline**: Public release markers overlaid with growth periods using non-causal attribution.
-- [x] **README badge generator**: Dynamic Shields-style SVG (`/api/badge`) rendering accumulated views since tracking began.
-
-#### Intelligence & User Experience
-
-- [x] **Deterministic analytics layer**: Pure TypeScript statistical engine computing moving averages, percentage changes, star velocity, and traffic spikes.
-- [x] **"What Changed" briefings**: Pre-computed bulleted change summaries before diving into raw charts.
-- [x] **Contextual AI explanations**: Structured LLM insights (`claude-haiku-4-5`) explaining already-computed deterministic metrics.
-- [x] **Progressive disclosure**: Public metrics accessible to anyone; private traffic analytics securely unlocked for verified repository owners/collaborators.
-- [x] **Secure token architecture**: GitHub OAuth tokens are encrypted in an httpOnly session cookie and never exposed to client JavaScript.
+- [x] **Private traffic dashboard**: 14-day views, clones, top referrers, popular paths, and multi-month historical D1 snapshots.
+- [x] **Progressive disclosure & security**: Public metrics open to everyone; private traffic securely unlocked for verified repository owners via encrypted httpOnly OAuth sessions.
 
 ---
 
-### 2. Next (Immediate Focus)
+## 2. Next — Distribution
 
-#### Deeper Intelligence
+High-leverage features that turn existing users into discovery channels:
 
-- [ ] **Deterministic anomaly detection**: Add z-score analysis and sudden-drop detection beyond the shipped moving-average spike detector.
-- [ ] **Release impact analysis**: Windowed comparison of traffic and star velocity 14 days before vs 14 days after major releases.
-- [ ] **Weekly digest summaries**: Automated Monday morning markdown briefings summarizing the past 7 days of repository growth.
-- [ ] **Multi-repository comparison**: Side-by-side growth and star velocity comparison across public and private repositories.
-- [ ] **CSV / JSON export**: One-click download of full accumulated snapshot histories for external BI and spreadsheets.
-
-#### Distribution & Sharing
-
-- [ ] **Public shareable report cards**: OpenGraph dynamic preview cards showcasing a repository's growth milestone.
-- [ ] **Standalone GitHub Action**: Action to snapshot traffic directly into repository artifacts or external storage without hosting the web app.
+- [ ] **Growth milestone alerts via webhooks**: Automated Discord / Slack webhook notifications when a repository crosses major star milestones (e.g., 1k, 5k, 10k stars) or detects growth acceleration.
+- [ ] **Interactive SVG growth charts for GitHub READMEs**: Expanding the growth card into an interactive sparkline SVG option (`/api/card/[owner]/[repo]?style=sparkline`).
+- [ ] **Sharable growth milestone certificates**: Single-click exportable social assets celebrating repository velocity milestones.
+- [ ] **Embeddable comparison widget**: Compact SVG comparison badge comparing two rival open-source tools (`/api/badge/compare?a=vercel/next.js&b=nuxt/nuxt`).
 
 ---
 
-### 3. Later (Future Horizons)
+## 3. Next — Retention
 
-#### Retention & Integrations
+Deep utility features that keep maintainers coming back:
 
-- [ ] **Slack & Discord webhooks**: Notifications for major milestones (e.g., 1k stars, 10k views) and unexpected traffic spikes.
-- [ ] **GitHub Issue/Discussion automated reports**: Optional scheduled weekly growth report posted to repository discussions.
-- [ ] **`gh` CLI extension**: `gh traffic` extension querying the analytics engine directly from the developer terminal.
-- [ ] **MCP (Model Context Protocol) server**: Expose repository growth telemetry to agentic AI workflows.
-- [ ] **Opt-in weekly email reports**: Transactional email dispatch summarizing tracked portfolio metrics.
-
----
-
-### 4. Explicitly Not Planned
-
-To maintain product focus, reliability, and security, the following are intentionally out of scope:
-
-- ❌ **3D / WebGL dashboards / VR / AR**: Complex 3D visualizations add unnecessary bundle size and degrade accessibility. Clean, responsive SVG/Canvas charts are faster and more readable.
-- ❌ **Native mobile apps (React Native / iOS / Android)**: The responsive web app is fully mobile-compatible across desktop and mobile browsers.
-- ❌ **Blockchain / Web3 analytics**: Unrelated to developer tools and repository growth intelligence.
-- ❌ **Autonomous AI agents altering repositories**: The platform provides analytical intelligence, not unmonitored code generation.
-- ❌ **Heavy enterprise multi-tenant database clusters**: The architecture leverages serverless edge compute (Cloudflare Pages, D1, Cron Triggers) to maintain zero server maintenance and a free tier.
+- [ ] **Weekly digest email**: Optional Monday morning briefing summarizing 7-day stars, clones, views, top referrer spikes, and release momentum.
+- [ ] **Anomaly & spike attribution**: Advanced referral pattern detection linking private traffic spikes to external Hacker News, Reddit, or X threads.
+- [ ] **Historical snapshot CSV / JSON export**: One-click download of all D1-persisted daily traffic snapshots for custom BI and archival.
+- [ ] **Automated GitHub Discussion / Issue digest**: GitHub Action or scheduled worker posting monthly traffic summaries directly into repository discussions.
 
 ---
 
-## 🛠️ Architecture Principles
+## 4. Ecosystem & Developer Tools
 
-1. **Developer-native**: Built for developers who value fast, clean, and reliable data over decorative fluff.
-2. **Show value before asking for auth**: Anyone can analyze public repositories immediately; authentication is reserved for private metrics.
-3. **Deterministic metrics first**: Math and anomaly detection are computed by tested code; AI is used strictly to narrate and explain, never to calculate.
-4. **Tokens never touch client JavaScript**: NextAuth session tokens are stored in encrypted httpOnly cookies, keeping GitHub access tokens inaccessible to client-side code.
+Extending the intelligence engine into maintainer terminals and IDEs:
+
+- [ ] **`gh traffic` CLI extension**: Query star velocity, release impact, and traffic snapshots directly from the command line (`gh traffic view owner/repo`).
+- [ ] **Standalone GitHub Action**: Archive repository traffic into git branch artifacts (`gh-pages` or data branch) for maintainers who prefer not to host a database.
+- [ ] **Raycast extension**: Instant keyboard-driven lookup of repository growth velocity and milestones.
+- [ ] **MCP (Model Context Protocol) server**: Expose repository growth telemetry to agentic AI coding tools (Antigravity, Cursor, Claude Code).
+
+---
+
+## 5. Explicitly Not Planned
+
+To maintain product focus, zero bloat, and trustworthy data, the following are intentionally out of scope:
+
+- ❌ **Unbounded AI chatbots**: We do not provide generic conversational chat widgets; AI is strictly scoped to contextual explanations of precomputed metrics.
+- ❌ **Synthetic vanity metrics**: No fake engagement scores or opaque algorithms without transparent statistical formulas.
+- ❌ **Paid artificial star boosts or growth hacks**: This tool is designed strictly for authentic open-source discovery and analytics.
+- ❌ **3D / WebGL canvas dashboards**: Heavy 3D visualizations add hundreds of kilobytes of bundle overhead without improving developer insight.
+- ❌ **Native mobile apps**: A responsive, fast web application with PWA capabilities serves all platforms without fragmentation.

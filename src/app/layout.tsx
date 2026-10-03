@@ -9,13 +9,15 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXTAUTH_URL || "https://github-traffic-analytics.pages.dev"),
   title: "GitHub Traffic Analytics",
   description:
-    "Track and analyze traffic for your GitHub repositories with beautiful visualizations.",
-  keywords: "GitHub, Analytics, Traffic, Repositories, Developer Tools",
+    "Understand why GitHub repositories grow. Explore public star history, releases, and momentum, then preserve private traffic beyond 14 days.",
+  keywords: "GitHub, star growth, repository analytics, releases, traffic",
   openGraph: {
     title: "GitHub Traffic Analytics",
-    description: "Track and analyze traffic for your GitHub repositories",
+    description:
+      "Understand why GitHub repositories grow with public star history and release insights.",
     type: "website",
     // Social card — generated per BANNER.md and committed to public/og.png.
     // Uncomment once the image exists (kept off until then so it never 404s):

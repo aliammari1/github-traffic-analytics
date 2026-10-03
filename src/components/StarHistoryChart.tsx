@@ -13,7 +13,7 @@ import {
   ReferenceDot,
 } from "recharts";
 import { format, parseISO } from "date-fns";
-import { StarPoint } from "@/lib/analytics";
+import { StarPoint, calculateReleaseImpact } from "@/lib/analytics";
 import { PublicRelease } from "@/lib/github-public";
 
 interface StarHistoryChartProps {
@@ -33,12 +33,10 @@ export default function StarHistoryChart({ data, releases = [] }: Readonly<StarH
     });
   }, [data]);
 
-  // Match releases to the closest chart sample by minimum absolute time distance
+  // Match releases to the closest chart sample and calculate deterministic impact
   const releaseDots = useMemo(() => {
     if (!releases.length || !chartData.length) return [];
-    const dots: Array<{ timestamp: number; stars: number; tag: string }> = [];
-
-    releases.forEach((rel) => {
+    return releases.map((rel) => {
       const relTime = parseISO(rel.publishedAt).getTime();
       let closest = chartData[0];
       let minDiff = Math.abs(chartData[0].timestamp - relTime);
@@ -51,15 +49,18 @@ export default function StarHistoryChart({ data, releases = [] }: Readonly<StarH
         }
       }
 
-      dots.push({
+      const impact = calculateReleaseImpact(data, rel);
+
+      return {
         timestamp: closest.timestamp,
         stars: closest.stars,
         tag: rel.tagName,
-      });
+        name: rel.name,
+        publishedAt: rel.publishedAt,
+        impact,
+      };
     });
-
-    return dots;
-  }, [releases, chartData]);
+  }, [releases, chartData, data]);
 
   if (chartData.length === 0) {
     return (
@@ -116,20 +117,62 @@ export default function StarHistoryChart({ data, releases = [] }: Readonly<StarH
               }
             />
             <Tooltip
-              contentStyle={{
-                backgroundColor: "#171717",
-                borderColor: "#404040",
-                borderRadius: "0.5rem",
-                color: "#f5f5f5",
-                fontSize: "12px",
-              }}
-              formatter={(value) => [Number(value).toLocaleString(), "Stars"]}
-              labelFormatter={(label) => {
+              content={({ active, payload, label }) => {
+                if (!active || !payload || !payload.length) return null;
+                const currentTimestamp = Number(label);
+                const stars = payload[0]?.value;
+
+                const nearbyRelease = releaseDots.find(
+                  (dot) => Math.abs(dot.timestamp - currentTimestamp) <= 86_400_000 * 3
+                );
+
+                let formattedDate = "";
                 try {
-                  return format(new Date(Number(label)), "MMMM d, yyyy");
+                  formattedDate = format(new Date(currentTimestamp), "MMMM d, yyyy");
                 } catch {
-                  return String(label);
+                  formattedDate = String(label);
                 }
+
+                return (
+                  <div className="rounded-lg border border-border bg-neutral-900/95 p-3 shadow-xl backdrop-blur-sm text-xs space-y-2 max-w-xs">
+                    <div className="font-semibold text-neutral-200">{formattedDate}</div>
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="text-neutral-400">Total Stars:</span>
+                      <span className="font-mono font-bold text-amber-400">
+                        {Number(stars).toLocaleString()}
+                      </span>
+                    </div>
+
+                    {nearbyRelease && (
+                      <div className="mt-2 border-t border-border/80 pt-2 space-y-1">
+                        <div className="flex items-center gap-1.5 font-medium text-amber-300">
+                          <span className="inline-block h-2 w-2 rounded-full bg-amber-400" />
+                          <span className="font-mono">{nearbyRelease.tag}</span>
+                          {nearbyRelease.name && nearbyRelease.name !== nearbyRelease.tag && (
+                            <span className="text-neutral-400 truncate text-[11px]">
+                              ({nearbyRelease.name})
+                            </span>
+                          )}
+                        </div>
+                        {nearbyRelease.impact ? (
+                          <div className="space-y-0.5 text-neutral-300">
+                            <div className="text-[11px] text-emerald-400 font-medium">
+                              +{nearbyRelease.impact.afterStars.toLocaleString()} stars over
+                              following 14 days
+                            </div>
+                            <div className="text-[10px] text-neutral-400 italic">
+                              {nearbyRelease.impact.associationLabel}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-[10px] text-neutral-400 italic">
+                            Release milestone recorded around this date.
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
               }}
             />
             <Line
@@ -154,6 +197,26 @@ export default function StarHistoryChart({ data, releases = [] }: Readonly<StarH
           </LineChart>
         </ResponsiveContainer>
       </div>
+
+      {releaseDots.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border/40">
+          <span className="text-xs text-muted-foreground mr-1">Milestones:</span>
+          {releaseDots.slice(0, 4).map((dot) => (
+            <div
+              key={dot.tag}
+              className="flex items-center gap-1.5 rounded-full border border-border bg-secondary/30 px-2.5 py-1 text-xs"
+            >
+              <span className="inline-block h-2 w-2 rounded-full bg-amber-400 shrink-0" />
+              <span className="font-mono font-medium">{dot.tag}</span>
+              {dot.impact ? (
+                <span className="text-muted-foreground text-[11px]">
+                  +{dot.impact.afterStars.toLocaleString()} stars (14d)
+                </span>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

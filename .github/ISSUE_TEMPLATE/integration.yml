@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: MIT
+name: Integration / Ecosystem proposal
+description: Propose an integration, export format, or external workflow tool
+labels: ["integration", "ecosystem"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        We welcome proposals for integrations that expand developer workflows (CLI, GitHub Actions, Slack/Discord webhooks, Raycast, IDE extensions, or BI exports).
+  - type: input
+    id: integration_name
+    attributes:
+      label: Integration Name
+      placeholder: GitHub Action for Traffic Archiving
+    validations:
+      required: true
+  - type: textarea
+    id: use_case
+    attributes:
+      label: Target Use Case & Workflow
+      description: Who uses this and how does it fit into their workflow?
+    validations:
+      required: true
+  - type: textarea
+    id: implementation_approach
+    attributes:
+      label: Proposed Implementation Approach
+      description: How should this integration be structured?
+    validations:
+      required: false
