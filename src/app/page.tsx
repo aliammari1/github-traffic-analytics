@@ -261,7 +261,7 @@ export default function HomePage() {
                 </div>
                 <h2 className="font-semibold text-base">Star History & Velocity</h2>
                 <p className="text-sm text-muted-foreground">
-                  View full community trajectories, calculated weekly run-rates, and release event
+                  View recent community trajectories, calculated weekly run-rates, and release event
                   milestones across any public repository.
                 </p>
               </CardContent>

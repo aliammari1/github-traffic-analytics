@@ -11,11 +11,11 @@
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/)
 [![pnpm](https://img.shields.io/badge/pnpm-10-f69220?logo=pnpm)](https://pnpm.io/)
 
-[**▶ Try Live Demo**](https://github-traffic-analytics.pages.dev) · [Docs](docs/) · [Compare Repositories](https://github-traffic-analytics.pages.dev/compare) · [⭐ Star this Repo](https://github.com/aliammari1/github-traffic-analytics)
+[**▶ Try Live Demo**](https://github-traffic-analytics.ali-ammari.workers.dev) · [Docs](docs/) · [Compare Repositories](https://github-traffic-analytics.ali-ammari.workers.dev/compare) · [⭐ Star this Repo](https://github.com/aliammari1/github-traffic-analytics)
 
 <br />
 
-<a href="https://github-traffic-analytics.pages.dev">
+<a href="https://github-traffic-analytics.ali-ammari.workers.dev">
   <img src="assets/screenshots/02-repo-overview.png" alt="GitHub Repository Growth Intelligence Platform" width="900" style="border-radius: 8px; border: 1px solid #30363d;" />
 </a>
 
@@ -27,10 +27,10 @@
 
 Analyze any public GitHub repository directly in your browser:
 
-- [**vercel/next.js**](https://github-traffic-analytics.pages.dev/repo/vercel/next.js) — Star trajectory, 7d/30d run-rate, and release impact
-- [**facebook/react**](https://github-traffic-analytics.pages.dev/repo/facebook/react) — Historical growth curves and milestone timeline
-- [**astral-sh/ruff**](https://github-traffic-analytics.pages.dev/repo/astral-sh/ruff) — Velocity acceleration and stargazer momentum
-- [**Compare Trajectories**](https://github-traffic-analytics.pages.dev/compare?repos=vercel/next.js,facebook/react,astral-sh/ruff) — Multi-repository side-by-side comparison
+- [**vercel/next.js**](https://github-traffic-analytics.ali-ammari.workers.dev/repo/vercel/next.js) — Star trajectory, 7d/30d run-rate, and release impact
+- [**facebook/react**](https://github-traffic-analytics.ali-ammari.workers.dev/repo/facebook/react) — Recent growth curves and milestone timeline
+- [**astral-sh/ruff**](https://github-traffic-analytics.ali-ammari.workers.dev/repo/astral-sh/ruff) — Velocity acceleration and stargazer momentum
+- [**Compare Trajectories**](https://github-traffic-analytics.ali-ammari.workers.dev/compare?repos=vercel/next.js,facebook/react,astral-sh/ruff) — Multi-repository side-by-side comparison
 
 ---
 
@@ -39,7 +39,7 @@ Analyze any public GitHub repository directly in your browser:
 Add a real-time, edge-cached growth card to your repository's `README.md`. It displays your repository's stars, 30-day growth, momentum score, and latest release:
 
 ```markdown
-[![Repo Growth](https://github-traffic-analytics.pages.dev/api/card/owner/repo)](https://github-traffic-analytics.pages.dev/repo/owner/repo)
+[![Repo Growth](https://github-traffic-analytics.ali-ammari.workers.dev/api/card/owner/repo)](https://github-traffic-analytics.ali-ammari.workers.dev/repo/owner/repo)
 ```
 
 ### Choose from multiple themes:
@@ -54,13 +54,13 @@ Add `?theme=<name>` to the image URL:
 - `catppuccin`
 
 ```markdown
-[![Repo Growth](https://github-traffic-analytics.pages.dev/api/card/owner/repo?theme=nord)](https://github-traffic-analytics.pages.dev/repo/owner/repo)
+[![Repo Growth](https://github-traffic-analytics.ali-ammari.workers.dev/api/card/owner/repo?theme=nord)](https://github-traffic-analytics.ali-ammari.workers.dev/repo/owner/repo)
 ```
 
 You can also embed the classic **total views badge** that counts traffic accumulated beyond GitHub's 14-day limit:
 
 ```markdown
-[![Repo traffic](https://github-traffic-analytics.pages.dev/api/badge?owner=you&repo=your-repo)](https://github-traffic-analytics.pages.dev/repo/you/your-repo)
+[![Repo traffic](https://github-traffic-analytics.ali-ammari.workers.dev/api/badge?owner=you&repo=your-repo)](https://github-traffic-analytics.ali-ammari.workers.dev/repo/you/your-repo)
 ```
 
 ---
@@ -105,15 +105,19 @@ Star velocity:    +254%
 Status:           Growth accelerated around this release.
 ```
 
-### 3. Multi-Repository Growth Comparison (`/compare`)
+### 3. Shareable Launch Reports (`/launch/[owner]/[repo]?tag=...`)
+
+Turn a release window into a public report that compares 14 days before vs. 14 days after the release, shows star-velocity change, marks the release on the trajectory, and provides a shareable URL. The report uses non-causal language by design.
+
+### 4. Multi-Repository Growth Comparison (`/compare`)
 
 Compare between 2 and 4 repositories simultaneously. Trajectories are visualized side-by-side with shareable URL state (`/compare?repos=vercel/next.js,nuxt/nuxt,sveltejs/svelte`).
 
-### 4. Long-Term Traffic Retention (Bypassing GitHub's 14-Day Limit)
+### 5. Long-Term Traffic Retention (Bypassing GitHub's 14-Day Limit)
 
 GitHub deletes traffic metrics (views, clones, referrers, and paths) after 14 days. When repository owners authenticate and enable tracking, an automated daily Cloudflare Cron Worker saves snapshots into Cloudflare **D1**, archiving your traffic history indefinitely.
 
-### 5. Contextual AI Actions (Explains Math, Never Hallucinates)
+### 6. Contextual AI Actions (Explains Math, Never Hallucinates)
 
 No generic AI chatbots. Maintainers can trigger contextual briefings:
 

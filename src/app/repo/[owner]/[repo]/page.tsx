@@ -18,6 +18,7 @@ import {
   Sparkles,
   BarChart3,
   Calendar,
+  Rocket,
   AlertCircle,
   ShieldCheck,
   CheckCircle2,
@@ -865,17 +866,24 @@ export default function RepositoryAnalyticsPage({
                             Published on {format(parseISO(rel.publishedAt), "MMMM d, yyyy")}
                           </p>
                         </div>
-                        <Button
-                          asChild
-                          variant="outline"
-                          size="sm"
-                          className="gap-1.5 text-xs shrink-0 self-start sm:self-auto"
-                        >
-                          <a href={rel.htmlUrl} target="_blank" rel="noopener noreferrer">
-                            <span>View on GitHub</span>
-                            <ExternalLink className="h-3 w-3" />
-                          </a>
-                        </Button>
+                        <div className="flex flex-wrap gap-2 self-start sm:self-auto">
+                          {impact && (
+                            <Button asChild size="sm" className="gap-1.5 text-xs">
+                              <Link
+                                href={`/launch/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}?tag=${encodeURIComponent(rel.tagName)}`}
+                              >
+                                <Rocket className="h-3 w-3" />
+                                Launch report
+                              </Link>
+                            </Button>
+                          )}
+                          <Button asChild variant="outline" size="sm" className="gap-1.5 text-xs">
+                            <a href={rel.htmlUrl} target="_blank" rel="noopener noreferrer">
+                              <span>View on GitHub</span>
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          </Button>
+                        </div>
                       </div>
 
                       {impact ? (
