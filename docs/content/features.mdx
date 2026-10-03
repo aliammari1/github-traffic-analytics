@@ -61,6 +61,16 @@ available. GitHub's current top-referrer and path responses alone do not supply
 those older windows, so the web overview does not invent them. A nearby release
 is shown as timing context, never a claim that it caused the change.
 
+## Export your archive
+
+On the historical traffic panel, use **Export CSV** or **Export JSON** to download
+the D1 snapshots collected for a repository. Exports contain raw daily metric
+rows (`day`, `metric`, `count`, `uniques`) in ascending date order. They can be
+empty before tracking begins. The export route checks both your signed-in
+session and current GitHub traffic access, and restricts the D1 query to your
+own snapshot records. Use optional `from` and `to` ISO dates to narrow a large
+archive. The response is private and never cached publicly.
+
 ## Traffic badge (the viral loop)
 
 Every tracked repo gets a public, embeddable SVG badge of its **total accumulated

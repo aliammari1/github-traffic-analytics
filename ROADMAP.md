@@ -50,6 +50,7 @@ More legitimate GitHub stars & organic adoption
 
 - [x] **14-day window bypass**: Daily automated Cloudflare Cron Worker snapshotting views and clones into Cloudflare D1.
 - [x] **Private traffic dashboard**: 14-day views, clones, top referrers, popular paths, and multi-month historical D1 snapshots.
+- [x] **Historical snapshot CSV / JSON export**: Owners and authorized collaborators can download their D1-persisted daily traffic records.
 - [x] **Progressive disclosure & security**: Public metrics open to everyone; private traffic securely unlocked for verified repository owners via encrypted httpOnly OAuth sessions.
 
 ---
@@ -69,7 +70,6 @@ Deep utility features that keep maintainers coming back:
 
 - [ ] **Weekly digest email**: Optional Monday morning briefing summarizing 7-day stars, clones, views, top referrer spikes, and release momentum.
 - [ ] **Anomaly & spike attribution**: Advanced referral pattern detection linking private traffic spikes to external Hacker News, Reddit, or X threads.
-- [ ] **Historical snapshot CSV / JSON export**: One-click download of all D1-persisted daily traffic snapshots for custom BI and archival.
 - [ ] **Automated GitHub Discussion / Issue digest**: GitHub Action or scheduled worker posting monthly traffic summaries directly into repository discussions.
 
 ---

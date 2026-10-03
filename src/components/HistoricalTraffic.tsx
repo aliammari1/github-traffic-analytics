@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { History } from "lucide-react";
+import { History, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   LineChart,
@@ -39,6 +39,8 @@ export default function HistoricalTraffic({ owner, repo }: HistoricalTrafficProp
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [tracking, setTracking] = useState(false);
+  const [exporting, setExporting] = useState<"csv" | "json" | null>(null);
+  const [exportMessage, setExportMessage] = useState("");
 
   const fetchHistory = useCallback(async () => {
     setLoading(true);
@@ -85,6 +87,40 @@ export default function HistoricalTraffic({ owner, repo }: HistoricalTrafficProp
     }
   };
 
+  const downloadHistory = async (format: "csv" | "json") => {
+    setExporting(format);
+    setExportMessage("");
+    try {
+      const response = await fetch(
+        `/api/snapshots/export?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}&format=${format}`
+      );
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Export unavailable. Try again shortly.");
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${owner}-${repo}-traffic.${format}`;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+      setExportMessage(
+        response.headers.get("x-export-rows") === "0"
+          ? "No snapshots have been collected yet. The downloaded archive contains a header only."
+          : `${format.toUpperCase()} export downloaded.`
+      );
+    } catch (cause) {
+      setExportMessage(
+        cause instanceof Error ? cause.message : "Export unavailable. Try again shortly."
+      );
+    } finally {
+      setExporting(null);
+    }
+  };
+
   return (
     <div className="rounded-lg border border-border p-6">
       <div className="flex items-start justify-between gap-4 mb-4">
@@ -97,15 +133,30 @@ export default function HistoricalTraffic({ owner, repo }: HistoricalTrafficProp
             Daily snapshots beyond GitHub&apos;s 14-day limit.
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={enableTracking}
-          disabled={tracking}
-          className="shrink-0"
-        >
-          {tracking ? "Enabling…" : "Track this repo"}
-        </Button>
+        <div className="flex flex-wrap justify-end gap-2">
+          {(["csv", "json"] as const).map((format) => (
+            <Button
+              key={format}
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={exporting !== null}
+              onClick={() => downloadHistory(format)}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              {exporting === format ? "Preparing…" : `Export ${format.toUpperCase()}`}
+            </Button>
+          ))}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={enableTracking}
+            disabled={tracking}
+            className="shrink-0"
+          >
+            {tracking ? "Enabling…" : "Track this repo"}
+          </Button>
+        </div>
       </div>
 
       {loading ? (
@@ -154,6 +205,9 @@ export default function HistoricalTraffic({ owner, repo }: HistoricalTrafficProp
       {history.length > 0 && message && (
         <p className="mt-3 text-sm text-muted-foreground">{message}</p>
       )}
+      <p role="status" aria-live="polite" className="mt-3 min-h-5 text-sm text-muted-foreground">
+        {exportMessage}
+      </p>
     </div>
   );
 }
