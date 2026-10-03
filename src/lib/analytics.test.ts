@@ -38,6 +38,10 @@ describe("analytics layer", () => {
         owner: "vercel",
         repo: "next.js",
       });
+      expect(parseRepoInput("vercel/next.js.git/")).toEqual({
+        owner: "vercel",
+        repo: "next.js",
+      });
       expect(parseRepoInput("https://github.com/vercel/next.js/tree/main")).toEqual({
         owner: "vercel",
         repo: "next.js",
@@ -142,7 +146,7 @@ describe("analytics layer", () => {
   });
 
   describe("comparePeriods", () => {
-    it("calculates differences between two periods", () => {
+    it("calculates differences between two periods including unique cloners", () => {
       const current = { views: 3000, viewUniques: 1000, clones: 150, cloneUniques: 75 };
       const previous = { views: 2000, viewUniques: 800, clones: 200, cloneUniques: 80 };
 
@@ -150,6 +154,7 @@ describe("analytics layer", () => {
       expect(comparison.viewsChangePercent).toBe(50);
       expect(comparison.uniquesChangePercent).toBe(25);
       expect(comparison.clonesChangePercent).toBe(-25);
+      expect(comparison.cloneUniquesChangePercent).toBe(-6.2);
     });
   });
 
@@ -169,19 +174,18 @@ describe("analytics layer", () => {
           viewsChangePercent: 32.5,
           uniquesChangePercent: 20,
           clonesChangePercent: -5,
+          cloneUniquesChangePercent: 25,
         },
-        spikes: [{ date: "2026-09-12", count: 4500, baseline: 1200, multiplier: 3.8 }],
-        topReferrer: { name: "developer-community", count: 2100 },
-        recentRelease: { name: "v16.3.0", tag: "v16.3.0", publishedAt: "2026-09-10T12:00:00Z" },
-        isTrackingActive: false,
+        topReferrer: { referrer: "developer-community", count: 2100, uniques: 850 },
+        recentRelease: { tagName: "v16.3.0", publishedAt: "2026-09-10T12:00:00Z" },
+        isTrackingEnabled: false,
       });
 
-      expect(highlights.length).toBeGreaterThanOrEqual(5);
+      expect(highlights.length).toBeGreaterThanOrEqual(4);
       expect(highlights.some((h) => h.includes("Traffic increased 32.5%"))).toBe(true);
+      expect(highlights.some((h) => h.includes("Unique repository cloners grew 25%"))).toBe(true);
       expect(highlights.some((h) => h.includes("developer-community"))).toBe(true);
-      expect(
-        highlights.some((h) => h.includes("growth activity tracked around this release"))
-      ).toBe(true);
+      expect(highlights.some((h) => h.includes("Recent release v16.3.0 published on"))).toBe(true);
       expect(highlights.some((h) => h.includes("Historical persistence is not enabled yet"))).toBe(
         true
       );
@@ -189,11 +193,11 @@ describe("analytics layer", () => {
 
     it("handles negative percentage changes and alternative branches in highlights", () => {
       const highlights = generateChangeHighlights({
-        repoName: "test",
         periodComparison: {
           viewsChangePercent: -20,
           uniquesChangePercent: -15,
           clonesChangePercent: 10,
+          cloneUniquesChangePercent: -25,
         },
         starVelocity: {
           currentStars: 100,
@@ -202,18 +206,23 @@ describe("analytics layer", () => {
           weeklyVelocity: 0,
           dailyVelocity: 0,
         },
-        isTrackingActive: true,
+        isTrackingEnabled: true,
       });
 
-      expect(highlights.some((h) => h.includes("Traffic declined 20%"))).toBe(true);
-      expect(highlights.some((h) => h.includes("Repository has 100 total stars."))).toBe(true);
+      expect(highlights.some((h) => h.includes("Traffic decreased 20%"))).toBe(true);
+      expect(highlights.some((h) => h.includes("Unique repository cloners dropped 25%"))).toBe(
+        true
+      );
+      expect(highlights.some((h) => h.includes("Star count held steady with zero net gain"))).toBe(
+        true
+      );
 
       const stableHighlights = generateChangeHighlights({
-        repoName: "test",
         periodComparison: {
           viewsChangePercent: 0,
           uniquesChangePercent: 0,
           clonesChangePercent: 0,
+          cloneUniquesChangePercent: 0,
         },
       });
       expect(stableHighlights.some((h) => h.includes("Traffic remained stable"))).toBe(true);

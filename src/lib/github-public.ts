@@ -83,12 +83,13 @@ export interface PublicRepoAnalysis {
   rateLimitRemaining?: number;
 }
 
-// In-memory cache for edge/server environments with 5-minute TTL
+// In-memory cache for edge/server environments with 5-minute TTL and size bounds
 interface CacheEntry<T> {
   data: T;
   expiresAt: number;
 }
 const cache = new Map<string, CacheEntry<unknown>>();
+const MAX_CACHE_SIZE = 500;
 
 function getCached<T>(key: string): T | null {
   const entry = cache.get(key);
@@ -101,7 +102,21 @@ function getCached<T>(key: string): T | null {
 }
 
 function setCache<T>(key: string, data: T, ttlMs = 300_000): void {
-  cache.set(key, { data, expiresAt: Date.now() + ttlMs });
+  const now = Date.now();
+  if (cache.size >= MAX_CACHE_SIZE) {
+    // Purge expired entries
+    for (const [k, v] of cache.entries()) {
+      if (now > v.expiresAt) {
+        cache.delete(k);
+      }
+    }
+    // If still at capacity, evict oldest entry
+    if (cache.size >= MAX_CACHE_SIZE) {
+      const oldestKey = cache.keys().next().value;
+      if (oldestKey) cache.delete(oldestKey);
+    }
+  }
+  cache.set(key, { data, expiresAt: now + ttlMs });
 }
 
 export class PublicGitHubService {
@@ -141,7 +156,7 @@ export class PublicGitHubService {
     }
 
     if (!res.ok) {
-      throw new PublicRepoError(`GitHub API error: ${res.statusText}`, res.status);
+      throw new PublicRepoError(`GitHub request failed: ${res.statusText}`, res.status);
     }
 
     const data = (await res.json()) as T;
@@ -150,8 +165,13 @@ export class PublicGitHubService {
 
   async getRepositoryMetadata(owner: string, repo: string): Promise<PublicRepoMetadata> {
     const cacheKey = `metadata:${owner}/${repo}`;
-    const cached = getCached<PublicRepoMetadata>(cacheKey);
-    if (cached) return cached;
+    const cached = getCached<PublicRepoMetadata | { notFound: true }>(cacheKey);
+    if (cached) {
+      if ("notFound" in cached) {
+        throw new PublicRepoNotFoundError(owner, repo);
+      }
+      return cached;
+    }
 
     try {
       const { data } = await this.request<any>(
@@ -168,12 +188,12 @@ export class PublicGitHubService {
         },
         description: data.description || null,
         language: data.language || null,
-        starsCount: Number(data.stargazers_count ?? 0),
-        forksCount: Number(data.forks_count ?? 0),
-        openIssuesCount: Number(data.open_issues_count ?? 0),
-        createdAt: data.created_at || new Date().toISOString(),
-        updatedAt: data.updated_at || new Date().toISOString(),
-        htmlUrl: data.html_url || `https://github.com/${owner}/${repo}`,
+        starsCount: data.stargazers_count ?? 0,
+        forksCount: data.forks_count ?? 0,
+        openIssuesCount: data.open_issues_count ?? 0,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+        htmlUrl: data.html_url,
         homepage: data.homepage || null,
         topics: Array.isArray(data.topics) ? data.topics : [],
         license: data.license?.spdx_id || data.license?.name || null,
@@ -183,34 +203,40 @@ export class PublicGitHubService {
       return metadata;
     } catch (err) {
       if (err instanceof PublicRepoError && err.status === 404) {
+        setCache(cacheKey, { notFound: true }, 60_000);
         throw new PublicRepoNotFoundError(owner, repo);
       }
       throw err;
     }
   }
 
-  async getRecentReleases(owner: string, repo: string): Promise<PublicRelease[]> {
+  async getRecentReleases(owner: string, repo: string, limit = 5): Promise<PublicRelease[]> {
     const cacheKey = `releases:${owner}/${repo}`;
     const cached = getCached<PublicRelease[]>(cacheKey);
     if (cached) return cached;
 
     try {
       const { data } = await this.request<any[]>(
-        `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/releases?per_page=10`
+        `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/releases?per_page=${limit}`
       );
 
-      const releases: PublicRelease[] = (Array.isArray(data) ? data : []).map((r) => ({
-        id: r.id,
-        name: r.name || r.tag_name,
-        tagName: r.tag_name,
-        publishedAt: r.published_at || r.created_at,
-        htmlUrl: r.html_url,
-        isPrerelease: Boolean(r.prerelease),
+      if (!Array.isArray(data)) return [];
+
+      const releases: PublicRelease[] = data.map((item) => ({
+        id: item.id,
+        name: item.name || item.tag_name,
+        tagName: item.tag_name,
+        publishedAt: item.published_at || item.created_at,
+        htmlUrl: item.html_url,
+        isPrerelease: Boolean(item.prerelease),
       }));
 
       setCache(cacheKey, releases, 300_000);
       return releases;
     } catch (err) {
+      if (err instanceof PublicRepoRateLimitError) {
+        throw err;
+      }
       if (err instanceof PublicRepoError && (err.status === 404 || err.status === 429)) {
         return [];
       }
@@ -240,50 +266,90 @@ export class PublicGitHubService {
       return points;
     }
 
+    let historyLoaded = false;
+
     try {
-      // 1. Fetch first batch of stars with timestamps
-      const { data: firstPage } = await this.request<Array<{ starred_at: string }>>(
-        `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/stargazers?per_page=30&page=1`,
-        { Accept: "application/vnd.github.v3.star+json" }
-      );
+      // 1. Try privacy-safe star history endpoint first (official GitHub REST API)
+      const { data: history } = await this.request<
+        Array<{ week: number; total: number; days: number[] }>
+      >(`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/stargazers/history`);
 
-      if (Array.isArray(firstPage) && firstPage.length > 0) {
-        firstPage.forEach((item, index) => {
-          if (item.starred_at) {
-            points.push({
-              date: item.starred_at.slice(0, 10),
-              stars: index + 1,
-            });
-          }
-        });
-      }
+      if (Array.isArray(history) && history.length > 0) {
+        const weeks = [...history].reverse(); // oldest first
+        const totalGained = weeks.reduce(
+          (sum, w) => sum + (w.total ?? w.days.reduce((a, b) => a + b, 0)),
+          0
+        );
+        let runningStars = Math.max(0, totalStars - totalGained);
 
-      // 2. If repo has more than 30 stars, sample the last page to capture recent velocity
-      if (totalStars > 30) {
-        const lastPageNum = Math.min(Math.ceil(totalStars / 30), 100);
-        try {
-          const { data: lastPage } = await this.request<Array<{ starred_at: string }>>(
-            `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/stargazers?per_page=30&page=${lastPageNum}`,
-            { Accept: "application/vnd.github.v3.star+json" }
-          );
-
-          if (Array.isArray(lastPage) && lastPage.length > 0) {
-            const baseCount = (lastPageNum - 1) * 30;
-            lastPage.forEach((item, index) => {
-              if (item.starred_at) {
-                points.push({
-                  date: item.starred_at.slice(0, 10),
-                  stars: baseCount + index + 1,
-                });
-              }
-            });
-          }
-        } catch {
-          // Gracefully fallback if last page query hits boundary
+        for (const w of weeks) {
+          w.days.forEach((gain, d) => {
+            runningStars += gain;
+            const dayDate = new Date((w.week + d * 86400) * 1000).toISOString().slice(0, 10);
+            if (dayDate <= today && dayDate >= creationDate) {
+              points.push({ date: dayDate, stars: runningStars });
+            }
+          });
         }
+        historyLoaded = true;
       }
-    } catch {
-      // Rate limit or fetch error: preserve creation and current total
+    } catch (err) {
+      if (err instanceof PublicRepoRateLimitError) {
+        throw err;
+      }
+      // Non-rate-limit errors fall back to legacy sample below
+    }
+
+    if (!historyLoaded) {
+      try {
+        // Fallback: sample initial stars and last page
+        const { data: firstPage } = await this.request<Array<{ starred_at: string }>>(
+          `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/stargazers?per_page=30&page=1&direction=asc`,
+          { Accept: "application/vnd.github.v3.star+json" }
+        );
+
+        if (Array.isArray(firstPage) && firstPage.length > 0) {
+          firstPage.forEach((item, index) => {
+            if (item.starred_at) {
+              points.push({
+                date: item.starred_at.slice(0, 10),
+                stars: index + 1,
+              });
+            }
+          });
+        }
+
+        if (totalStars > 30) {
+          const lastPageNum = Math.min(Math.ceil(totalStars / 30), 100);
+          try {
+            const { data: lastPage } = await this.request<Array<{ starred_at: string }>>(
+              `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/stargazers?per_page=30&page=${lastPageNum}&direction=asc`,
+              { Accept: "application/vnd.github.v3.star+json" }
+            );
+
+            if (Array.isArray(lastPage) && lastPage.length > 0) {
+              const baseCount = (lastPageNum - 1) * 30;
+              lastPage.forEach((item, index) => {
+                if (item.starred_at) {
+                  points.push({
+                    date: item.starred_at.slice(0, 10),
+                    stars: baseCount + index + 1,
+                  });
+                }
+              });
+            }
+          } catch (innerErr) {
+            if (innerErr instanceof PublicRepoRateLimitError) {
+              throw innerErr;
+            }
+          }
+        }
+      } catch (err) {
+        if (err instanceof PublicRepoRateLimitError) {
+          throw err;
+        }
+        console.warn(`Failed to fetch star history for ${owner}/${repo}:`, err);
+      }
     }
 
     // Always ensure current date + total stars is represented
@@ -308,13 +374,33 @@ export class PublicGitHubService {
 
   async analyzePublicRepository(owner: string, repo: string): Promise<PublicRepoAnalysis> {
     const metadata = await this.getRepositoryMetadata(owner, repo);
-    const releases = await this.getRecentReleases(owner, repo);
-    const starHistory = await this.getStarHistory(
-      owner,
-      repo,
-      metadata.starsCount,
-      metadata.createdAt
-    );
+    let isRateLimited = false;
+
+    let releases: PublicRelease[] = [];
+    try {
+      releases = await this.getRecentReleases(owner, repo);
+    } catch (err) {
+      if (err instanceof PublicRepoRateLimitError) {
+        isRateLimited = true;
+      } else {
+        throw err;
+      }
+    }
+
+    let starHistory: StarPoint[] = [];
+    try {
+      starHistory = await this.getStarHistory(owner, repo, metadata.starsCount, metadata.createdAt);
+    } catch (err) {
+      if (err instanceof PublicRepoRateLimitError) {
+        isRateLimited = true;
+        starHistory = [
+          { date: metadata.createdAt.slice(0, 10), stars: 0 },
+          { date: new Date().toISOString().slice(0, 10), stars: metadata.starsCount },
+        ];
+      } else {
+        throw err;
+      }
+    }
 
     const starVelocity = calculateStarVelocity(starHistory, metadata.starsCount);
 
@@ -325,7 +411,7 @@ export class PublicGitHubService {
       currentStars: metadata.starsCount,
       starVelocity,
       recentRelease,
-      isTrackingActive: false, // Public viewer baseline
+      isTrackingEnabled: false, // Public viewer baseline
     });
 
     return {
@@ -334,7 +420,7 @@ export class PublicGitHubService {
       starVelocity,
       releases,
       highlights,
-      isRateLimited: false,
+      isRateLimited,
     };
   }
 }

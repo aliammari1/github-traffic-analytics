@@ -70,10 +70,10 @@ host the app) is being extracted as **Wave 2** — ⭐ to follow along.
   popular paths per repo. Daily snapshots persisted to Cloudflare **D1** via a
   **Cron Worker** maintain history beyond GitHub's 14-day window.
 - **Deterministic analytics & "What Changed"** — statistical engine computing
-  percentage change, moving averages, traffic spikes, and star velocity before
-  displaying raw charts.
-- **Contextual AI insights** — an "Explain this change" briefing using the Anthropic
-  Messages API (`claude-haiku-4-5`) explaining pre-computed deterministic metrics.
+  star velocity (7d/30d), period-over-period traffic comparisons, and release
+  highlights before displaying raw charts.
+- **Contextual AI insights** — an optional streaming traffic summary using the Anthropic
+  Messages API (`claude-haiku-4-5`) synthesizing views, clones, referrers, and popular content paths.
 - **Progressive disclosure** — public metrics accessible to anyone; verified repository
   owners unlock private views, clones, referrers, and long-term retention.
 
@@ -95,8 +95,8 @@ Create an OAuth App at **Settings → Developer settings → OAuth Apps → New 
 - **Authorization callback URL:** `http://localhost:3000/api/auth/callback/github`
 
 The app requests the `repo` and `user:email` scopes — both are required to read
-repository traffic. Each user only ever sees their own data; tokens are never
-exposed to the client.
+repository traffic. Each user only ever sees their own data; tokens are encrypted
+in httpOnly session cookies and never exposed to client JavaScript.
 
 ### Environment variables
 

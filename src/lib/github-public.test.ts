@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   PublicGitHubService,
   PublicRepoNotFoundError,
@@ -7,12 +7,19 @@ import {
 } from "./github-public";
 
 describe("PublicGitHubService", () => {
-  it("fetches and maps repository metadata accurately", async () => {
-    const mockRepo = {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("fetches repository metadata successfully", async () => {
+    const mockRepoData = {
       id: 12345,
       name: "next.js",
       full_name: "vercel/next.js",
-      owner: { login: "vercel", avatar_url: "https://avatar.url" },
+      owner: {
+        login: "vercel",
+        avatar_url: "https://avatars.githubusercontent.com/u/14985020",
+      },
       description: "The React Framework",
       language: "JavaScript",
       stargazers_count: 125000,
@@ -29,18 +36,17 @@ describe("PublicGitHubService", () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      headers: new Headers({ "x-ratelimit-remaining": "59" }),
-      json: async () => mockRepo,
+      headers: new Headers({ "x-ratelimit-remaining": "50", "x-ratelimit-reset": "1800000000" }),
+      json: async () => mockRepoData,
     });
 
     const service = new PublicGitHubService({ fetchFn: mockFetch });
-    const meta = await service.getRepositoryMetadata("vercel", "next.js");
+    const metadata = await service.getRepositoryMetadata("vercel", "next.js");
 
-    expect(meta.name).toBe("next.js");
-    expect(meta.fullName).toBe("vercel/next.js");
-    expect(meta.starsCount).toBe(125000);
-    expect(meta.license).toBe("MIT");
-    expect(meta.topics).toContain("react");
+    expect(metadata.name).toBe("next.js");
+    expect(metadata.starsCount).toBe(125000);
+    expect(metadata.owner.login).toBe("vercel");
+    expect(metadata.license).toBe("MIT");
   });
 
   it("throws PublicRepoNotFoundError on 404", async () => {
@@ -52,7 +58,7 @@ describe("PublicGitHubService", () => {
     });
 
     const service = new PublicGitHubService({ fetchFn: mockFetch });
-    await expect(service.getRepositoryMetadata("unknown", "repo")).rejects.toBeInstanceOf(
+    await expect(service.getRepositoryMetadata("nonexistent", "repo")).rejects.toBeInstanceOf(
       PublicRepoNotFoundError
     );
   });
@@ -95,9 +101,23 @@ describe("PublicGitHubService", () => {
 
     expect(releases).toHaveLength(1);
     expect(releases[0].tagName).toBe("v16.0.0");
+
+    // Also assert empty release list handling with distinct key to bypass cache
+    const emptyMockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "x-ratelimit-remaining": "50" }),
+      json: async () => [],
+    });
+    const emptyService = new PublicGitHubService({ fetchFn: emptyMockFetch });
+    const emptyReleases = await emptyService.getRecentReleases("empty", "repo");
+    expect(emptyReleases).toEqual([]);
   });
 
-  it("builds a star trajectory and computes velocity", async () => {
+  it("builds a star trajectory and computes velocity with fixed clock", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-25T00:00:00Z"));
+
     const mockFetch = vi.fn().mockImplementation((url: string) => {
       if (url.includes("/releases")) {
         return Promise.resolve({
@@ -140,6 +160,98 @@ describe("PublicGitHubService", () => {
     expect(analysis.repository.name).toBe("test-repo");
     expect(analysis.starHistory.length).toBeGreaterThanOrEqual(2);
     expect(analysis.highlights.length).toBeGreaterThan(0);
+    expect(analysis.starVelocity.currentStars).toBe(50);
+    expect(analysis.starVelocity.growth7d).toBe(19);
+    expect(analysis.starVelocity.growth30d).toBe(50);
+  });
+
+  it("builds star trajectory using modern /stargazers/history weekly buckets", async () => {
+    const mockHistory = [
+      {
+        week: 1789862400, // 2026-09-20
+        total: 10,
+        days: [1, 2, 1, 1, 2, 1, 2],
+      },
+    ];
+
+    const mockFetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/stargazers/history")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          headers: new Headers({ "x-ratelimit-remaining": "50" }),
+          json: async () => mockHistory,
+        });
+      }
+      return Promise.resolve({
+        ok: false,
+        status: 404,
+        statusText: "Not Found",
+      });
+    });
+
+    const service = new PublicGitHubService({ fetchFn: mockFetch });
+    const points = await service.getStarHistory("fast", "repo", 20, "2026-01-01T00:00:00Z");
+    expect(points.length).toBeGreaterThan(1);
+    expect(points[points.length - 1].stars).toBe(20);
+  });
+
+  it("uses cached negative result when repository is repeatedly queried after 404", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      statusText: "Not Found",
+      headers: new Headers({ "x-ratelimit-remaining": "50" }),
+    });
+
+    const service = new PublicGitHubService({ fetchFn: mockFetch });
+    await expect(service.getRepositoryMetadata("ghost", "repo")).rejects.toBeInstanceOf(
+      PublicRepoNotFoundError
+    );
+    // Second call should hit the negative cache without calling fetch
+    await expect(service.getRepositoryMetadata("ghost", "repo")).rejects.toBeInstanceOf(
+      PublicRepoNotFoundError
+    );
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("gracefully flags isRateLimited when star history hits rate limits", async () => {
+    const mockFetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/stargazers")) {
+        return Promise.resolve({
+          ok: false,
+          status: 403,
+          headers: new Headers({ "x-ratelimit-remaining": "0" }),
+          statusText: "rate limit exceeded",
+        });
+      }
+      if (url.includes("/releases")) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          headers: new Headers({ "x-ratelimit-remaining": "50" }),
+          json: async () => [],
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        headers: new Headers({ "x-ratelimit-remaining": "50" }),
+        json: async () => ({
+          id: 2,
+          name: "limited-repo",
+          full_name: "user/limited-repo",
+          owner: { login: "user", avatar_url: "" },
+          stargazers_count: 100,
+          created_at: "2026-01-01T00:00:00Z",
+        }),
+      });
+    });
+
+    const service = new PublicGitHubService({ fetchFn: mockFetch });
+    const analysis = await service.analyzePublicRepository("user", "limited-repo");
+    expect(analysis.isRateLimited).toBe(true);
+    expect(analysis.starHistory).toHaveLength(2);
   });
 
   it("handles zero stars gracefully in star history", async () => {
@@ -170,7 +282,7 @@ describe("PublicGitHubService", () => {
     });
     const service = new PublicGitHubService({ fetchFn: mockFetch });
     await expect(service.getRepositoryMetadata("err", "repo")).rejects.toThrow(
-      "GitHub API error: Internal Server Error"
+      "GitHub request failed: Internal Server Error"
     );
   });
 

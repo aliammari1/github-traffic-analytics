@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 "use client";
 
-import { use, useState, useEffect, useCallback } from "react";
+import { use, useState, useEffect } from "react";
 import Link from "next/link";
-import { useSession, signIn } from "next-auth/react";
-import { format } from "date-fns";
+import Image from "next/image";
+import { useSession } from "next-auth/react";
+import { format, parseISO } from "date-fns";
 import {
   Star,
   GitFork,
@@ -76,71 +77,89 @@ export default function RepositoryAnalyticsPage({
   const [hasPrivateAccess, setHasPrivateAccess] = useState(false);
   const [privateLoading, setPrivateLoading] = useState(false);
 
-  // 1. Fetch public analysis
-  const fetchPublicAnalysis = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      setIsRateLimited(false);
+  // 1. Fetch public analysis with cancellation flag to prevent race conditions
+  useEffect(() => {
+    let isCurrent = true;
+    setLoading(true);
+    setError(null);
+    setIsRateLimited(false);
 
-      const res = await fetch(
-        `/api/public/repo?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`
-      );
-      if (res.status === 404) {
-        throw new Error("Repository not found or is private.");
-      }
-      if (res.status === 429) {
-        setIsRateLimited(true);
-        throw new Error("GitHub API rate limit exceeded for unauthenticated requests.");
-      }
-      if (!res.ok) {
-        throw new Error("Failed to fetch repository analysis.");
-      }
+    fetch(`/api/public/repo?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`)
+      .then(async (res) => {
+        if (!isCurrent) return;
+        if (res.status === 404) {
+          throw new Error("Repository not found or is private.");
+        }
+        if (res.status === 429) {
+          setIsRateLimited(true);
+          throw new Error("GitHub API rate limit exceeded for unauthenticated requests.");
+        }
+        if (!res.ok) {
+          throw new Error("Failed to fetch repository analysis.");
+        }
 
-      const data: PublicRepoAnalysis = await res.json();
-      setAnalysis(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An unexpected error occurred.");
-    } finally {
-      setLoading(false);
-    }
+        const data: PublicRepoAnalysis = await res.json();
+        if (isCurrent) {
+          setAnalysis(data);
+        }
+      })
+      .catch((err) => {
+        if (isCurrent) {
+          setError(err instanceof Error ? err.message : "An unexpected error occurred.");
+        }
+      })
+      .finally(() => {
+        if (isCurrent) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      isCurrent = false;
+    };
   }, [owner, repo]);
 
-  // 2. Fetch private traffic if user is signed in
-  const checkPrivateAccess = useCallback(async () => {
+  // 2. Fetch private traffic with cancellation flag
+  useEffect(() => {
+    let isCurrent = true;
     if (!session) {
       setHasPrivateAccess(false);
       setPrivateTraffic(null);
+      setPrivateLoading(false);
       return;
     }
 
-    try {
-      setPrivateLoading(true);
-      const res = await fetch(
-        `/api/traffic?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`
-      );
-      if (res.ok) {
-        const data: PrivateTrafficData = await res.json();
-        setPrivateTraffic(data);
-        setHasPrivateAccess(true);
-      } else {
-        setHasPrivateAccess(false);
-        setPrivateTraffic(null);
-      }
-    } catch {
-      setHasPrivateAccess(false);
-    } finally {
-      setPrivateLoading(false);
-    }
+    setPrivateLoading(true);
+    fetch(`/api/traffic?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`)
+      .then(async (res) => {
+        if (!isCurrent) return;
+        if (res.ok) {
+          const data: PrivateTrafficData = await res.json();
+          if (isCurrent) {
+            setPrivateTraffic(data);
+            setHasPrivateAccess(true);
+          }
+        } else if (isCurrent) {
+          setHasPrivateAccess(false);
+          setPrivateTraffic(null);
+        }
+      })
+      .catch(() => {
+        if (isCurrent) {
+          setHasPrivateAccess(false);
+          setPrivateTraffic(null);
+        }
+      })
+      .finally(() => {
+        if (isCurrent) {
+          setPrivateLoading(false);
+        }
+      });
+
+    return () => {
+      isCurrent = false;
+    };
   }, [owner, repo, session]);
-
-  useEffect(() => {
-    fetchPublicAnalysis();
-  }, [fetchPublicAnalysis]);
-
-  useEffect(() => {
-    checkPrivateAccess();
-  }, [checkPrivateAccess]);
 
   if (loading) {
     return (
@@ -173,11 +192,13 @@ export default function RepositoryAnalyticsPage({
                 <Github className="h-4 w-4" /> Why did this happen?
               </h2>
               <p className="text-sm text-muted-foreground">
-                GitHub permits unauthenticated IP addresses 60 requests per hour. You can bypass
-                this limit immediately by connecting your GitHub account.
+                GitHub permits unauthenticated requests a shared quota of 60 requests per hour.
+                Please wait a short while or explore another repository.
               </p>
-              <Button onClick={() => signIn("github")} className="w-full gap-2">
-                <Github className="h-4 w-4" /> Connect GitHub
+              <Button asChild variant="outline" className="w-full gap-2">
+                <Link href="/" className="gap-2">
+                  <ArrowLeft className="h-4 w-4" /> Try another repository
+                </Link>
               </Button>
             </div>
           ) : (
@@ -198,126 +219,151 @@ export default function RepositoryAnalyticsPage({
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Top Header */}
-      <header className="border-b border-border/60 bg-background/80 backdrop-blur-sm sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/"
-              className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span>Back</span>
-            </Link>
-            <div className="h-4 w-px bg-border" />
-            <div className="flex items-center gap-2 font-medium text-sm">
-              <span className="text-muted-foreground">{meta.owner.login}</span>
-              <span className="text-muted-foreground">/</span>
-              <span className="font-semibold text-foreground">{meta.name}</span>
+      {/* Top Navigation Bar */}
+      <header className="border-b border-border/80 sticky top-0 z-30 bg-background/95 backdrop-blur">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <Button asChild variant="ghost" size="icon" className="shrink-0">
+              <Link href="/" aria-label="Back to home">
+                <ArrowLeft className="h-4 w-4" />
+              </Link>
+            </Button>
+            <div className="flex items-center gap-2 min-w-0">
+              <Image
+                src={meta.owner.avatarUrl}
+                alt={meta.owner.login}
+                width={28}
+                height={28}
+                className="w-7 h-7 rounded-full shrink-0 border border-border"
+                unoptimized
+              />
+              <span className="font-semibold truncate text-base">{meta.fullName}</span>
+              <Badge variant="outline" className="text-xs shrink-0 hidden sm:inline-flex">
+                Public Repo
+              </Badge>
+              {hasPrivateAccess && (
+                <Badge
+                  variant="secondary"
+                  className="text-xs shrink-0 text-emerald-400 border-emerald-500/30 gap-1 flex items-center"
+                >
+                  <ShieldCheck className="h-3 w-3" /> Owner Unlocked
+                </Badge>
+              )}
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Button asChild variant="ghost" size="sm" className="gap-1.5 text-xs">
+          <div className="flex items-center gap-3 shrink-0">
+            <Button asChild variant="outline" size="sm" className="gap-1.5 text-xs">
               <a href={meta.htmlUrl} target="_blank" rel="noopener noreferrer">
-                <Github className="h-3.5 w-3.5" />
-                <span>GitHub</span>
+                <span>View on GitHub</span>
                 <ExternalLink className="h-3 w-3" />
               </a>
             </Button>
-            {!session && (
-              <Button
-                onClick={() => signIn("github")}
-                size="sm"
-                variant="outline"
-                className="gap-2 text-xs"
-              >
-                <Github className="h-3.5 w-3.5" />
-                Sign in
-              </Button>
-            )}
           </div>
         </div>
       </header>
 
-      {/* Hero / Repo Meta Banner */}
-      <div className="border-b border-border bg-card/40 py-8 px-6">
+      {/* Hero Overview Header */}
+      <div className="border-b border-border/60 bg-muted/20 py-8 px-6">
         <div className="max-w-7xl mx-auto space-y-4">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-3 mb-2 flex-wrap">
-                <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{meta.fullName}</h1>
-                {meta.license && (
-                  <Badge variant="outline" className="text-xs">
-                    {meta.license}
-                  </Badge>
-                )}
-                {meta.language && (
-                  <Badge variant="secondary" className="text-xs">
-                    {meta.language}
-                  </Badge>
-                )}
-                {hasPrivateAccess ? (
-                  <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-xs gap-1">
-                    <ShieldCheck className="h-3 w-3" /> Owner Access Unlocked
-                  </Badge>
-                ) : (
-                  <Badge variant="outline" className="text-xs text-muted-foreground">
-                    Public Analysis
-                  </Badge>
-                )}
-              </div>
-              <p className="text-sm text-muted-foreground max-w-3xl">
-                {meta.description || "No description provided for this repository."}
+            <div className="space-y-1">
+              <h1 className="text-2xl font-bold tracking-tight">{meta.name}</h1>
+              <p className="text-sm text-muted-foreground max-w-2xl">
+                {meta.description || "No description provided."}
               </p>
             </div>
 
-            {/* Quick Metrics Bar */}
-            <div className="flex items-center gap-4 shrink-0">
-              <div className="rounded-lg border border-border bg-background p-3 min-w-28 text-center">
-                <div className="text-xs text-muted-foreground flex items-center justify-center gap-1 mb-1">
-                  <Star className="h-3.5 w-3.5 text-amber-400" /> Stars
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <Star className="h-5 w-5 text-amber-400 fill-amber-400" />
+                <div>
+                  <div className="text-lg font-bold">{meta.starsCount.toLocaleString()}</div>
+                  <div className="text-xs text-muted-foreground">stars</div>
                 </div>
-                <div className="text-lg font-bold">{meta.starsCount.toLocaleString()}</div>
               </div>
-              <div className="rounded-lg border border-border bg-background p-3 min-w-28 text-center">
-                <div className="text-xs text-muted-foreground flex items-center justify-center gap-1 mb-1">
-                  <TrendingUp className="h-3.5 w-3.5 text-cyan-400" /> Star Velocity
+
+              <div className="flex items-center gap-2">
+                <GitFork className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <div className="text-lg font-bold">{meta.forksCount.toLocaleString()}</div>
+                  <div className="text-xs text-muted-foreground">forks</div>
                 </div>
-                <div className="text-lg font-bold">+{starVelocity.weeklyVelocity}/wk</div>
               </div>
-              <div className="rounded-lg border border-border bg-background p-3 min-w-28 text-center">
-                <div className="text-xs text-muted-foreground flex items-center justify-center gap-1 mb-1">
-                  <GitFork className="h-3.5 w-3.5" /> Forks
+
+              {meta.language && (
+                <div className="flex items-center gap-2">
+                  <Tag className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <div className="text-lg font-bold">{meta.language}</div>
+                    <div className="text-xs text-muted-foreground">language</div>
+                  </div>
                 </div>
-                <div className="text-lg font-bold">{meta.forksCount.toLocaleString()}</div>
+              )}
+            </div>
+          </div>
+
+          {/* Quick Metrics Bar */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+            <div className="rounded-lg border border-border/60 bg-card p-3">
+              <span className="text-xs text-muted-foreground">7-Day Star Velocity</span>
+              <div className="text-lg font-bold text-amber-400 flex items-center gap-1.5 mt-0.5">
+                <TrendingUp className="h-4 w-4" />+{starVelocity.growth7d} stars
               </div>
+              <span className="text-xs text-muted-foreground">
+                ~{starVelocity.dailyVelocity}/day run-rate
+              </span>
+            </div>
+
+            <div className="rounded-lg border border-border/60 bg-card p-3">
+              <span className="text-xs text-muted-foreground">30-Day Growth</span>
+              <div className="text-lg font-bold text-foreground mt-0.5">
+                +{starVelocity.growth30d} stars
+              </div>
+              <span className="text-xs text-muted-foreground">past month trajectory</span>
+            </div>
+
+            <div className="rounded-lg border border-border/60 bg-card p-3">
+              <span className="text-xs text-muted-foreground">Weekly Run-Rate</span>
+              <div className="text-lg font-bold text-cyan-400 mt-0.5">
+                ~{starVelocity.weeklyVelocity} / wk
+              </div>
+              <span className="text-xs text-muted-foreground">projected velocity</span>
+            </div>
+
+            <div className="rounded-lg border border-border/60 bg-card p-3">
+              <span className="text-xs text-muted-foreground">Latest Release</span>
+              <div className="text-lg font-bold text-foreground truncate mt-0.5">
+                {releases[0]?.tagName || "None"}
+              </div>
+              <span className="text-xs text-muted-foreground">
+                {releases[0]
+                  ? `on ${format(parseISO(releases[0].publishedAt), "MMM d, yyyy")}`
+                  : "No tags published"}
+              </span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Tab Navigation */}
-      <div className="border-b border-border bg-background">
+      <div className="border-b border-border/80 sticky top-16 z-20 bg-background/95 backdrop-blur">
         <div className="max-w-7xl mx-auto px-6">
-          <nav
-            className="flex space-x-2 md:space-x-8 overflow-x-auto"
-            role="tablist"
-            aria-label="Repository sections"
-          >
+          <nav className="flex space-x-6 overflow-x-auto" aria-label="Tabs" role="tablist">
             {[
-              { key: "overview", label: "Overview", icon: BarChart3 },
-              { key: "traffic", label: "Traffic", icon: Eye, private: true },
-              { key: "acquisition", label: "Acquisition", icon: TrendingUp, private: true },
-              { key: "content", label: "Content", icon: ExternalLink, private: true },
-              { key: "stars", label: "Stars", icon: Star },
-              { key: "releases", label: "Releases", icon: Tag },
-              { key: "insights", label: "Insights", icon: Sparkles, private: true },
-            ].map(({ key, label, icon: Icon, private: isPrivate }) => {
+              { key: "overview", label: "Overview", icon: BarChart3, isPrivate: false },
+              { key: "traffic", label: "Traffic", icon: Eye, isPrivate: true },
+              { key: "acquisition", label: "Acquisition", icon: TrendingUp, isPrivate: true },
+              { key: "content", label: "Content", icon: Tag, isPrivate: true },
+              { key: "stars", label: "Star History", icon: Star, isPrivate: false },
+              { key: "releases", label: "Releases", icon: Calendar, isPrivate: false },
+              { key: "insights", label: "AI Insights", icon: Sparkles, isPrivate: true },
+            ].map(({ key, label, icon: Icon, isPrivate }) => {
               const isActive = activeTab === key;
               return (
                 <button
                   key={key}
+                  id={`tab-${key}`}
                   role="tab"
                   aria-selected={isActive}
                   aria-controls={`panel-${key}`}
@@ -340,498 +386,525 @@ export default function RepositoryAnalyticsPage({
         </div>
       </div>
 
-      {/* Main Content Area */}
+      {/* Main Content Area - All panels mounted for WAI-ARIA compliance */}
       <main className="max-w-7xl mx-auto px-6 py-8">
         {/* OVERVIEW TAB */}
-        {activeTab === "overview" && (
-          <div className="space-y-8" role="tabpanel" id="panel-overview">
-            {/* What Changed Highlight Card */}
-            <Card className="border-cyan-500/20 bg-gradient-to-r from-cyan-950/20 via-background to-background">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center gap-2 text-cyan-400">
-                  <Sparkles className="h-5 w-5" /> What Changed & Growth Highlights
+        <div
+          role="tabpanel"
+          id="panel-overview"
+          aria-labelledby="tab-overview"
+          hidden={activeTab !== "overview"}
+          className={activeTab === "overview" ? "space-y-8" : "hidden"}
+        >
+          {/* What Changed Highlight Card */}
+          <Card className="border-cyan-500/20 bg-gradient-to-r from-cyan-950/20 via-background to-background">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2 text-cyan-400">
+                <Sparkles className="h-5 w-5" /> What Changed & Growth Highlights
+              </CardTitle>
+              <CardDescription>
+                Deterministic growth signals computed directly from repository telemetry
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2 text-sm">
+                {highlights.map((h, i) => (
+                  <li key={i} className="flex items-start gap-2.5">
+                    <span className="text-cyan-400 font-bold">•</span>
+                    <span className="text-foreground/90">{h}</span>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+
+          {/* Public Star Growth Chart */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Community Trajectory</CardTitle>
+              <CardDescription>
+                All-time star growth timeline with annotated major release milestones
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <StarHistoryChart data={starHistory} releases={releases} />
+            </CardContent>
+          </Card>
+
+          {/* If owner has unlocked private access, show quick traffic overview */}
+          {hasPrivateAccess && privateTraffic ? (
+            <div className="space-y-6">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Eye className="h-5 w-5 text-emerald-400" /> Private Traffic Snapshot (Last 14 Days)
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xs text-muted-foreground">14-Day Views</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {privateTraffic.views.count.toLocaleString()}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {privateTraffic.views.uniques.toLocaleString()} unique visitors
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xs text-muted-foreground">14-Day Clones</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {privateTraffic.clones.count.toLocaleString()}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {privateTraffic.clones.uniques.toLocaleString()} unique cloners
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xs text-muted-foreground">Top Referrer</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-lg font-semibold truncate">
+                      {privateTraffic.referrers[0]?.referrer || "None"}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {privateTraffic.referrers[0]?.count.toLocaleString() ?? 0} views
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xs text-muted-foreground">Top Content</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-lg font-semibold truncate">
+                      {privateTraffic.paths[0]?.path || "None"}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {privateTraffic.paths[0]?.count.toLocaleString() ?? 0} views
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          ) : (
+            /* Owner unlock CTA */
+            <Card className="border-border/80 bg-secondary/20">
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Lock className="h-4 w-4 text-muted-foreground" />
+                  Own this repository? Unlock private traffic analytics
                 </CardTitle>
                 <CardDescription>
-                  Deterministic growth signals computed directly from repository telemetry
+                  GitHub only provides traffic data for the last 14 days and requires repository
+                  push or admin permissions.
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <ul className="space-y-2 text-sm">
-                  {highlights.map((h, i) => (
-                    <li key={i} className="flex items-start gap-2.5">
-                      <span className="text-cyan-400 font-bold">•</span>
-                      <span className="text-foreground/90">{h}</span>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-
-            {/* Public Star Growth Chart */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Community Trajectory</CardTitle>
-                <CardDescription>
-                  All-time star growth timeline with annotated major release milestones
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <StarHistoryChart data={starHistory} releases={releases} />
-              </CardContent>
-            </Card>
-
-            {/* If owner has unlocked private access, show quick traffic overview */}
-            {hasPrivateAccess && privateTraffic ? (
-              <div className="space-y-6">
-                <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <Eye className="h-5 w-5 text-emerald-400" /> Private Traffic Snapshot (Last 14
-                  Days)
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-xs text-muted-foreground">14-Day Views</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">
-                        {privateTraffic.views.count.toLocaleString()}
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {privateTraffic.views.uniques.toLocaleString()} unique visitors
-                      </p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-xs text-muted-foreground">14-Day Clones</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">
-                        {privateTraffic.clones.count.toLocaleString()}
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {privateTraffic.clones.uniques.toLocaleString()} unique cloners
-                      </p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-xs text-muted-foreground">Top Referrer</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-lg font-semibold truncate">
-                        {privateTraffic.referrers[0]?.referrer || "None"}
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {privateTraffic.referrers[0]?.count.toLocaleString() ?? 0} views
-                      </p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-xs text-muted-foreground">Top Content</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-lg font-semibold truncate">
-                        {privateTraffic.paths[0]?.path || "None"}
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {privateTraffic.paths[0]?.count.toLocaleString() ?? 0} views
-                      </p>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-            ) : (
-              /* Owner unlock CTA */
-              <Card className="border-border/80 bg-secondary/20">
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Lock className="h-4 w-4 text-muted-foreground" />
-                    Own this repository? Unlock private traffic analytics
-                  </CardTitle>
-                  <CardDescription>
-                    GitHub only provides traffic data for the last 14 days and requires repository
-                    push or admin permissions.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-cyan-400 shrink-0" />
-                      <span>14-day views & clones</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-cyan-400 shrink-0" />
-                      <span>Top referral channels</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-cyan-400 shrink-0" />
-                      <span>Daily D1 historical snapshots</span>
-                    </div>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-cyan-400 shrink-0" />
+                    <span>14-day views & clones</span>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-cyan-400 shrink-0" />
+                    <span>Top referral channels</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-cyan-400 shrink-0" />
+                    <span>Daily D1 historical snapshots</span>
+                  </div>
+                </div>
 
-                  {!session ? (
-                    <Button onClick={() => signIn("github")} className="gap-2">
+                {!session ? (
+                  <Button asChild className="gap-2">
+                    <Link href="/api/auth/signin">
                       <Github className="h-4 w-4" /> Sign in with GitHub to unlock
-                    </Button>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">
-                      Signed in as <strong>{session.user?.name}</strong>. If you have push
-                      permissions for this repo, refresh or verify your OAuth scopes.
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        )}
+                    </Link>
+                  </Button>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Signed in as <strong>{session.user?.name}</strong>. If you have push permissions
+                    for this repo, refresh or verify your OAuth scopes.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
 
         {/* TRAFFIC TAB */}
-        {activeTab === "traffic" && (
-          <div className="space-y-8" role="tabpanel" id="panel-traffic">
-            {hasPrivateAccess && privateTraffic ? (
-              <div className="space-y-8">
-                {/* 14-day Views & Clones Charts */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">Views Over Time (14 Days)</CardTitle>
-                      <CardDescription>Daily page views and unique visitors</CardDescription>
-                    </CardHeader>
-                    <CardContent className="h-64">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart
-                          data={privateTraffic.views.views.map((v) => ({
-                            date: format(new Date(v.timestamp), "MMM d"),
-                            views: v.count,
-                            uniques: v.uniques,
-                          }))}
-                        >
-                          <CartesianGrid strokeDasharray="3 3" stroke="#262626" opacity={0.5} />
-                          <XAxis dataKey="date" stroke="#737373" fontSize={11} tickLine={false} />
-                          <YAxis stroke="#737373" fontSize={11} tickLine={false} axisLine={false} />
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: "#171717",
-                              borderColor: "#404040",
-                              borderRadius: "0.5rem",
-                              fontSize: "12px",
-                            }}
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="views"
-                            stroke="#06b6d4"
-                            strokeWidth={2}
-                            dot={false}
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="uniques"
-                            stroke="#3b82f6"
-                            strokeWidth={1.5}
-                            strokeDasharray="4 4"
-                            dot={false}
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </CardContent>
-                  </Card>
+        <div
+          role="tabpanel"
+          id="panel-traffic"
+          aria-labelledby="tab-traffic"
+          hidden={activeTab !== "traffic"}
+          className={activeTab === "traffic" ? "space-y-8" : "hidden"}
+        >
+          {hasPrivateAccess && privateTraffic ? (
+            <div className="space-y-8">
+              {/* 14-day Views & Clones Charts */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Views Over Time (14 Days)</CardTitle>
+                    <CardDescription>Daily page views and unique visitors</CardDescription>
+                  </CardHeader>
+                  <CardContent className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart
+                        data={privateTraffic.views.views.map((v) => ({
+                          date: format(parseISO(v.timestamp), "MMM d"),
+                          views: v.count,
+                          uniques: v.uniques,
+                        }))}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#262626" opacity={0.5} />
+                        <XAxis dataKey="date" stroke="#737373" fontSize={11} tickLine={false} />
+                        <YAxis stroke="#737373" fontSize={11} tickLine={false} axisLine={false} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "#171717",
+                            borderColor: "#404040",
+                            borderRadius: "0.5rem",
+                            fontSize: "12px",
+                          }}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="views"
+                          stroke="#06b6d4"
+                          strokeWidth={2}
+                          dot={false}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="uniques"
+                          stroke="#3b82f6"
+                          strokeWidth={1.5}
+                          strokeDasharray="4 4"
+                          dot={false}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
 
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">Clones Over Time (14 Days)</CardTitle>
-                      <CardDescription>Git clone volume and unique cloners</CardDescription>
-                    </CardHeader>
-                    <CardContent className="h-64">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart
-                          data={privateTraffic.clones.clones.map((c) => ({
-                            date: format(new Date(c.timestamp), "MMM d"),
-                            clones: c.count,
-                            uniques: c.uniques,
-                          }))}
-                        >
-                          <CartesianGrid strokeDasharray="3 3" stroke="#262626" opacity={0.5} />
-                          <XAxis dataKey="date" stroke="#737373" fontSize={11} tickLine={false} />
-                          <YAxis stroke="#737373" fontSize={11} tickLine={false} axisLine={false} />
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: "#171717",
-                              borderColor: "#404040",
-                              borderRadius: "0.5rem",
-                              fontSize: "12px",
-                            }}
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="clones"
-                            stroke="#10b981"
-                            strokeWidth={2}
-                            dot={false}
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Long-term D1 Historical Traffic */}
-                <HistoricalTraffic owner={owner} repo={repo} />
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Clones Over Time (14 Days)</CardTitle>
+                    <CardDescription>Git clone volume and unique cloners</CardDescription>
+                  </CardHeader>
+                  <CardContent className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart
+                        data={privateTraffic.clones.clones.map((c) => ({
+                          date: format(parseISO(c.timestamp), "MMM d"),
+                          clones: c.count,
+                          uniques: c.uniques,
+                        }))}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#262626" opacity={0.5} />
+                        <XAxis dataKey="date" stroke="#737373" fontSize={11} tickLine={false} />
+                        <YAxis stroke="#737373" fontSize={11} tickLine={false} axisLine={false} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "#171717",
+                            borderColor: "#404040",
+                            borderRadius: "0.5rem",
+                            fontSize: "12px",
+                          }}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="clones"
+                          stroke="#10b981"
+                          strokeWidth={2}
+                          dot={false}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
               </div>
-            ) : (
-              <PrivateUnlockCard
-                session={session}
-                featureName="traffic analytics"
-                isLoading={privateLoading}
-              />
-            )}
-          </div>
-        )}
+
+              {/* Long-term D1 Historical Traffic */}
+              <HistoricalTraffic owner={owner} repo={repo} />
+            </div>
+          ) : (
+            <PrivateUnlockCard
+              session={session}
+              featureName="traffic analytics"
+              isLoading={privateLoading}
+            />
+          )}
+        </div>
 
         {/* ACQUISITION TAB */}
-        {activeTab === "acquisition" && (
-          <div className="space-y-6" role="tabpanel" id="panel-acquisition">
-            {hasPrivateAccess && privateTraffic ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Top Referral Sources</CardTitle>
-                  <CardDescription>
-                    Domains and platforms directing traffic to your repository
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {privateTraffic.referrers.length === 0 ? (
-                    <p className="text-sm text-muted-foreground py-4">
-                      No referrer data recorded yet.
-                    </p>
-                  ) : (
-                    <div className="divide-y divide-border">
-                      {privateTraffic.referrers.map((ref, idx) => (
-                        <div key={idx} className="py-3 flex items-center justify-between text-sm">
-                          <span className="font-mono text-xs">{ref.referrer}</span>
-                          <div className="flex items-center gap-4">
-                            <span className="text-muted-foreground text-xs">
-                              {ref.uniques} unique visitors
-                            </span>
-                            <span className="font-semibold">{ref.count} views</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ) : (
-              <PrivateUnlockCard
-                session={session}
-                featureName="referral sources"
-                isLoading={privateLoading}
-              />
-            )}
-          </div>
-        )}
-
-        {/* CONTENT TAB */}
-        {activeTab === "content" && (
-          <div className="space-y-6" role="tabpanel" id="panel-content">
-            {hasPrivateAccess && privateTraffic ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Popular Repository Content</CardTitle>
-                  <CardDescription>
-                    Most viewed paths and files within your repository
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {privateTraffic.paths.length === 0 ? (
-                    <p className="text-sm text-muted-foreground py-4">
-                      No content path data recorded yet.
-                    </p>
-                  ) : (
-                    <div className="divide-y divide-border">
-                      {privateTraffic.paths.map((p, idx) => (
-                        <div key={idx} className="py-3 flex items-center justify-between text-sm">
-                          <div>
-                            <p className="font-mono text-xs truncate max-w-md">{p.path}</p>
-                            {p.title && p.title !== p.path && (
-                              <p className="text-xs text-muted-foreground mt-0.5">{p.title}</p>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-4 shrink-0">
-                            <span className="text-muted-foreground text-xs">
-                              {p.uniques} unique
-                            </span>
-                            <span className="font-semibold">{p.count} views</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ) : (
-              <PrivateUnlockCard
-                session={session}
-                featureName="popular content metrics"
-                isLoading={privateLoading}
-              />
-            )}
-          </div>
-        )}
-
-        {/* STARS TAB */}
-        {activeTab === "stars" && (
-          <div className="space-y-8" role="tabpanel" id="panel-stars">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-xs text-muted-foreground">Current Stars</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {starVelocity.currentStars.toLocaleString()}
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-xs text-muted-foreground">7-Day Growth</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-amber-400">+{starVelocity.growth7d}</div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    ~{starVelocity.dailyVelocity} stars/day
+        <div
+          role="tabpanel"
+          id="panel-acquisition"
+          aria-labelledby="tab-acquisition"
+          hidden={activeTab !== "acquisition"}
+          className={activeTab === "acquisition" ? "space-y-6" : "hidden"}
+        >
+          {hasPrivateAccess && privateTraffic ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Top Referral Sources</CardTitle>
+                <CardDescription>
+                  Domains and platforms directing traffic to your repository
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {privateTraffic.referrers.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4">
+                    No referrer data recorded yet.
                   </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-xs text-muted-foreground">30-Day Growth</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-amber-400">+{starVelocity.growth30d}</div>
-                  <p className="text-xs text-muted-foreground mt-1">Past month trajectory</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-xs text-muted-foreground">Weekly Velocity</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-cyan-400">
-                    {starVelocity.weeklyVelocity} / wk
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">Calculated run-rate</p>
-                </CardContent>
-              </Card>
-            </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Star Growth Trajectory</CardTitle>
-                <CardDescription>
-                  Cumulative stargazers mapped over repository lifespan
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <StarHistoryChart data={starHistory} releases={releases} />
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {/* RELEASES TAB */}
-        {activeTab === "releases" && (
-          <div className="space-y-6" role="tabpanel" id="panel-releases">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Release Timeline & Events</CardTitle>
-                <CardDescription>
-                  Recent releases and milestones. Growth metrics reflect activity observed around
-                  launch windows.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {releases.length === 0 ? (
-                  <div className="py-8 text-center text-muted-foreground text-sm">
-                    No public releases detected for this repository.
-                  </div>
                 ) : (
                   <div className="divide-y divide-border">
-                    {releases.map((rel) => (
-                      <div
-                        key={rel.id}
-                        className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                      >
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold text-sm">{rel.name}</span>
-                            <Badge variant="outline" className="font-mono text-xs">
-                              {rel.tagName}
-                            </Badge>
-                            {rel.isPrerelease && (
-                              <Badge variant="secondary" className="text-xs">
-                                Pre-release
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            Published on {format(new Date(rel.publishedAt), "MMMM d, yyyy")}
-                          </p>
+                    {privateTraffic.referrers.map((ref, idx) => (
+                      <div key={idx} className="py-3 flex items-center justify-between text-sm">
+                        <span className="font-mono text-xs">{ref.referrer}</span>
+                        <div className="flex items-center gap-4">
+                          <span className="text-muted-foreground text-xs">
+                            {ref.uniques} unique visitors
+                          </span>
+                          <span className="font-semibold">{ref.count} views</span>
                         </div>
-                        <Button
-                          asChild
-                          variant="outline"
-                          size="sm"
-                          className="gap-1.5 text-xs shrink-0"
-                        >
-                          <a href={rel.htmlUrl} target="_blank" rel="noopener noreferrer">
-                            <span>View Release</span>
-                            <ExternalLink className="h-3 w-3" />
-                          </a>
-                        </Button>
                       </div>
                     ))}
                   </div>
                 )}
               </CardContent>
             </Card>
+          ) : (
+            <PrivateUnlockCard
+              session={session}
+              featureName="referral sources"
+              isLoading={privateLoading}
+            />
+          )}
+        </div>
+
+        {/* CONTENT TAB */}
+        <div
+          role="tabpanel"
+          id="panel-content"
+          aria-labelledby="tab-content"
+          hidden={activeTab !== "content"}
+          className={activeTab === "content" ? "space-y-6" : "hidden"}
+        >
+          {hasPrivateAccess && privateTraffic ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Popular Repository Content</CardTitle>
+                <CardDescription>
+                  Most viewed paths and files within your repository
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {privateTraffic.paths.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4">
+                    No content path data recorded yet.
+                  </p>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {privateTraffic.paths.map((p, idx) => (
+                      <div key={idx} className="py-3 flex items-center justify-between text-sm">
+                        <div>
+                          <p className="font-mono text-xs truncate max-w-md">{p.path}</p>
+                          {p.title && p.title !== p.path && (
+                            <p className="text-xs text-muted-foreground mt-0.5">{p.title}</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-4 shrink-0">
+                          <span className="text-muted-foreground text-xs">{p.uniques} unique</span>
+                          <span className="font-semibold">{p.count} views</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <PrivateUnlockCard
+              session={session}
+              featureName="popular content metrics"
+              isLoading={privateLoading}
+            />
+          )}
+        </div>
+
+        {/* STARS TAB */}
+        <div
+          role="tabpanel"
+          id="panel-stars"
+          aria-labelledby="tab-stars"
+          hidden={activeTab !== "stars"}
+          className={activeTab === "stars" ? "space-y-8" : "hidden"}
+        >
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs text-muted-foreground">Current Stars</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {starVelocity.currentStars.toLocaleString()}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs text-muted-foreground">7-Day Growth</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-amber-400">+{starVelocity.growth7d}</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  ~{starVelocity.dailyVelocity} stars/day
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs text-muted-foreground">30-Day Growth</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-amber-400">+{starVelocity.growth30d}</div>
+                <p className="text-xs text-muted-foreground mt-1">Past month trajectory</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs text-muted-foreground">Weekly Velocity</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-cyan-400">
+                  {starVelocity.weeklyVelocity} / wk
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Calculated run-rate</p>
+              </CardContent>
+            </Card>
           </div>
-        )}
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Star Growth Trajectory</CardTitle>
+              <CardDescription>
+                Cumulative stargazers mapped over repository lifespan
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <StarHistoryChart data={starHistory} releases={releases} />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* RELEASES TAB */}
+        <div
+          role="tabpanel"
+          id="panel-releases"
+          aria-labelledby="tab-releases"
+          hidden={activeTab !== "releases"}
+          className={activeTab === "releases" ? "space-y-6" : "hidden"}
+        >
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Release Timeline & Events</CardTitle>
+              <CardDescription>
+                Recent releases and milestones. Growth metrics reflect activity observed around
+                launch windows.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {releases.length === 0 ? (
+                <div className="py-8 text-center text-muted-foreground text-sm">
+                  No public releases detected for this repository.
+                </div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {releases.map((rel) => (
+                    <div
+                      key={rel.id}
+                      className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-sm">{rel.name}</span>
+                          <Badge variant="outline" className="font-mono text-xs">
+                            {rel.tagName}
+                          </Badge>
+                          {rel.isPrerelease && (
+                            <Badge variant="secondary" className="text-xs">
+                              Pre-release
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          Published on {format(parseISO(rel.publishedAt), "MMMM d, yyyy")}
+                        </p>
+                      </div>
+                      <Button
+                        asChild
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 text-xs shrink-0"
+                      >
+                        <a href={rel.htmlUrl} target="_blank" rel="noopener noreferrer">
+                          <span>View Release</span>
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
         {/* INSIGHTS TAB */}
-        {activeTab === "insights" && (
-          <div className="space-y-6" role="tabpanel" id="panel-insights">
-            {hasPrivateAccess && privateTraffic ? (
-              <InsightsPanel
-                payload={{
-                  repoCount: 1,
-                  totalViews: privateTraffic.views.count,
-                  totalUniques: privateTraffic.views.uniques,
-                  totalClones: privateTraffic.clones.count,
-                  totalCloneUniques: privateTraffic.clones.uniques,
-                  totalStars: meta.starsCount,
-                  topReferrers: privateTraffic.referrers,
-                  topPaths: privateTraffic.paths,
-                  daily: privateTraffic.views.views.map((v) => ({
-                    date: v.timestamp.slice(0, 10),
-                    views: v.count,
-                    uniques: v.uniques,
-                  })),
-                }}
-              />
-            ) : (
-              <PrivateUnlockCard
-                session={session}
-                featureName="contextual AI growth insights"
-                isLoading={privateLoading}
-              />
-            )}
-          </div>
-        )}
+        <div
+          role="tabpanel"
+          id="panel-insights"
+          aria-labelledby="tab-insights"
+          hidden={activeTab !== "insights"}
+          className={activeTab === "insights" ? "space-y-6" : "hidden"}
+        >
+          {hasPrivateAccess && privateTraffic ? (
+            <InsightsPanel
+              payload={{
+                repoCount: 1,
+                totalViews: privateTraffic.views.count,
+                totalUniques: privateTraffic.views.uniques,
+                totalClones: privateTraffic.clones.count,
+                totalCloneUniques: privateTraffic.clones.uniques,
+                totalStars: meta.starsCount,
+                topReferrers: privateTraffic.referrers,
+                topPaths: privateTraffic.paths,
+                daily: privateTraffic.views.views.map((v) => ({
+                  date: v.timestamp.slice(0, 10),
+                  views: v.count,
+                  uniques: v.uniques,
+                })),
+              }}
+            />
+          ) : (
+            <PrivateUnlockCard
+              session={session}
+              featureName="contextual AI growth insights"
+              isLoading={privateLoading}
+            />
+          )}
+        </div>
       </main>
     </div>
   );
@@ -848,8 +921,13 @@ function PrivateUnlockCard({
 }) {
   if (isLoading) {
     return (
-      <div className="flex h-48 items-center justify-center">
+      <div
+        role="status"
+        aria-label="Loading repository telemetry"
+        className="flex h-48 items-center justify-center"
+      >
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        <span className="sr-only">Loading repository telemetry...</span>
       </div>
     );
   }
@@ -866,8 +944,10 @@ function PrivateUnlockCard({
       </CardDescription>
 
       {!session ? (
-        <Button onClick={() => signIn("github")} className="gap-2">
-          <Github className="h-4 w-4" /> Sign in with GitHub to unlock
+        <Button asChild className="gap-2">
+          <Link href="/api/auth/signin">
+            <Github className="h-4 w-4" /> Sign in with GitHub to unlock
+          </Link>
         </Button>
       ) : (
         <p className="text-xs text-muted-foreground">

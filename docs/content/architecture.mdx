@@ -12,8 +12,8 @@ GitHub OAuth ──► NextAuth (session + access token)
         ┌─────────────┼─────────────────────────────┬──────────────────────────┐
         ▼             ▼                             ▼                          ▼
   /api/repositories  /api/traffic               /api/insights             /api/public/repo
-  /api/snapshots     (Octokit → GitHub)         (Deterministic metrics    (Public GitHub API +
-  /api/track              │                      + Anthropic Messages API) Star History & Releases)
+  /api/snapshots     (Octokit → GitHub)         (Anthropic Claude         (Public GitHub API +
+  /api/track              │                      Prompt & Stream)          Star History & Releases)
         │                 │                                                    │
         ▼                 │                                                    ▼
      D1 (traffic_snapshots, tracked_repos)                         Edge Memory Cache (5m TTL)
@@ -38,7 +38,7 @@ GitHub OAuth ──► NextAuth (session + access token)
 
 A central architectural goal of the growth intelligence overhaul is **surface independence**:
 
-1. **Pure Domain Logic:** `src/lib/analytics.ts` and `src/lib/github-public.ts` have zero browser or Next.js framework dependencies. They accept pure data models and return pure typed results.
+1. **Decoupled Architecture:** `src/lib/analytics.ts` provides pure deterministic domain logic, while `src/lib/github-public.ts` is a framework-independent API service with in-memory caching. Both are decoupled from Next.js UI components.
 2. **Future CLI Extension (`gh traffic`):** When building the `gh` CLI extension, it can import `src/lib/analytics.ts` directly or call `/api/public/repo` to display ASCII charts, velocity metrics, and change highlights in developer terminals.
 3. **GitHub Action:** A standalone Action workflow can evaluate `calculateStarVelocity` and `detectTrafficSpikes` from repository telemetry to fail CI or post markdown summaries to PR comments or discussions.
 4. **Model Context Protocol (MCP):** An MCP server can expose tools like `analyze_repo_growth` and `explain_repo_changes` using the deterministic analytics functions as ground-truth inputs before passing to LLM clients.

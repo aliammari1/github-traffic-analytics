@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
-
 /**
- * Deterministic analytics layer for repository growth and traffic.
- * Pure TypeScript functions with zero external dependencies, designed for
- * reuse across the web dashboard, CLI tools, GitHub Actions, and LLM input prep.
+ * Deterministic analytics layer for GitHub repository telemetry.
+ *
+ * All calculations here are pure functions: deterministic, fast, testable,
+ * and completely independent of any UI framework or external LLM service.
  */
 
 export interface RepoIdentifier {
@@ -11,8 +11,14 @@ export interface RepoIdentifier {
   repo: string;
 }
 
+export interface MetricPoint {
+  timestamp: string;
+  count: number;
+  uniques: number;
+}
+
 export interface StarPoint {
-  date: string; // YYYY-MM-DD
+  date: string;
   stars: number;
 }
 
@@ -20,14 +26,13 @@ export interface StarVelocityResult {
   currentStars: number;
   growth7d: number;
   growth30d: number;
-  weeklyVelocity: number; // stars gained per 7 days on average
+  weeklyVelocity: number;
   dailyVelocity: number;
 }
 
 export interface TrafficPoint {
-  date: string; // YYYY-MM-DD or ISO
+  date: string;
   count: number;
-  uniques?: number;
 }
 
 export interface SpikeDetectionResult {
@@ -48,28 +53,39 @@ export interface PeriodComparisonResult {
   viewsChangePercent: number | null;
   uniquesChangePercent: number | null;
   clonesChangePercent: number | null;
+  cloneUniquesChangePercent: number | null;
 }
 
 export interface HighlightInput {
-  repoName: string;
+  repoName?: string;
   currentStars?: number;
   starVelocity?: StarVelocityResult;
   periodComparison?: PeriodComparisonResult;
   spikes?: SpikeDetectionResult[];
-  topReferrer?: { name: string; count: number };
-  recentRelease?: { name?: string; tag?: string; tagName?: string; publishedAt: string };
+  recentRelease?: {
+    name?: string | null;
+    tag?: string;
+    tagName?: string;
+    publishedAt: string;
+  } | null;
+  topReferrer?: {
+    referrer?: string;
+    name?: string;
+    count: number;
+    uniques?: number;
+  } | null;
+  isTrackingEnabled?: boolean;
   isTrackingActive?: boolean;
 }
 
 /**
- * Parse flexible user input into a canonical GitHub { owner, repo }.
+ * Robustly parses GitHub repository identifiers from arbitrary user input.
  * Accepts:
  * - "owner/repo"
  * - "https://github.com/owner/repo"
- * - "http://github.com/owner/repo"
  * - "github.com/owner/repo"
  * - "owner/repo.git"
- * - trailing slashes or subpaths (e.g. /tree/main, /issues)
+ * - "owner/repo.git/"
  */
 export function parseRepoInput(input: string): RepoIdentifier | null {
   if (!input || typeof input !== "string") return null;
@@ -80,11 +96,12 @@ export function parseRepoInput(input: string): RepoIdentifier | null {
   // Strip protocol and domain if present
   cleaned = cleaned.replace(/^(?:https?:\/\/)?(?:www\.)?github\.com\//i, "");
 
-  // Strip leading slash if any
-  cleaned = cleaned.replace(/^\/+/, "");
+  // Strip leading and trailing slashes
+  cleaned = cleaned.replace(/^\/+|\/+$/g, "");
 
-  // Strip .git extension if present
-  cleaned = cleaned.replace(/\.git$/i, "");
+  // Strip .git extension if present at end or before a slash
+  cleaned = cleaned.replace(/\.git(?:\/|$)/i, "");
+  cleaned = cleaned.replace(/\/+$/g, "");
 
   // Extract owner and repo parts
   const parts = cleaned.split("/").filter(Boolean);
@@ -108,15 +125,15 @@ export function parseRepoInput(input: string): RepoIdentifier | null {
 
 /**
  * Calculate the percentage change between current and previous values.
- * Returns null if previous is 0 and current is 0, or handles edge cases cleanly.
+ * Returns 0 if both current and previous are 0; returns null if previous is 0 and current > 0.
  */
 export function calculatePercentageChange(current: number, previous: number): number | null {
   if (previous === 0) {
     if (current === 0) return 0;
-    return null; // Cannot divide by zero; represents new baseline from zero
+    return null;
   }
-  const change = ((current - previous) / previous) * 100;
-  return Math.round(change * 10) / 10;
+  const diff = current - previous;
+  return Math.round((diff / previous) * 1000) / 10;
 }
 
 /**
@@ -137,16 +154,15 @@ export function calculateMovingAverage(data: number[], windowSize = 3): number[]
 }
 
 /**
- * Compute star growth rates and velocities from a timeline of star points.
+ * Compute star growth rates and velocities over recent intervals.
  */
 export function calculateStarVelocity(
-  points: StarPoint[],
-  currentTotal?: number
+  history: StarPoint[],
+  currentStars: number
 ): StarVelocityResult {
-  if (!points || points.length === 0) {
-    const stars = currentTotal ?? 0;
+  if (!history || history.length === 0) {
     return {
-      currentStars: stars,
+      currentStars,
       growth7d: 0,
       growth30d: 0,
       weeklyVelocity: 0,
@@ -154,33 +170,31 @@ export function calculateStarVelocity(
     };
   }
 
-  // Sort chronological
-  const sorted = [...points].sort(
+  const sorted = [...history].sort(
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
   );
-
-  const latestStars = currentTotal ?? sorted[sorted.length - 1].stars;
-  const now = new Date(sorted[sorted.length - 1].date).getTime();
-
+  const now = Date.now();
   const ms7d = 7 * 24 * 60 * 60 * 1000;
   const ms30d = 30 * 24 * 60 * 60 * 1000;
 
-  // Find point closest to 7 days before latest
-  const point7d = sorted.find((p) => now - new Date(p.date).getTime() <= ms7d);
-  // Find point closest to 30 days before latest
-  const point30d = sorted.find((p) => now - new Date(p.date).getTime() <= ms30d);
+  const cutoff7d = now - ms7d;
+  const cutoff30d = now - ms30d;
+
+  // We want the latest observation at or before each cutoff as the baseline
+  const point7d = [...sorted].reverse().find((p) => new Date(p.date).getTime() <= cutoff7d);
+  const point30d = [...sorted].reverse().find((p) => new Date(p.date).getTime() <= cutoff30d);
 
   const base7d = point7d ? point7d.stars : sorted[0].stars;
   const base30d = point30d ? point30d.stars : sorted[0].stars;
 
-  const growth7d = Math.max(0, latestStars - base7d);
-  const growth30d = Math.max(0, latestStars - base30d);
+  const growth7d = Math.max(0, currentStars - base7d);
+  const growth30d = Math.max(0, currentStars - base30d);
 
+  const weeklyVelocity = growth7d;
   const dailyVelocity = Math.round((growth7d / 7) * 10) / 10;
-  const weeklyVelocity = Math.round(growth7d * 10) / 10;
 
   return {
-    currentStars: latestStars,
+    currentStars,
     growth7d,
     growth30d,
     weeklyVelocity,
@@ -231,6 +245,10 @@ export function comparePeriods(
     viewsChangePercent: calculatePercentageChange(current.views, previous.views),
     uniquesChangePercent: calculatePercentageChange(current.viewUniques, previous.viewUniques),
     clonesChangePercent: calculatePercentageChange(current.clones, previous.clones),
+    cloneUniquesChangePercent: calculatePercentageChange(
+      current.cloneUniques,
+      previous.cloneUniques
+    ),
   };
 }
 
@@ -246,29 +264,42 @@ export function generateChangeHighlights(input: HighlightInput): string[] {
     input.periodComparison?.viewsChangePercent !== undefined &&
     input.periodComparison.viewsChangePercent !== null
   ) {
-    const pct = input.periodComparison.viewsChangePercent;
-    if (pct > 0) {
-      highlights.push(`Traffic increased ${pct}% compared to the prior period.`);
-    } else if (pct < 0) {
-      highlights.push(`Traffic declined ${Math.abs(pct)}% compared to the prior period.`);
+    const change = input.periodComparison.viewsChangePercent;
+    if (Math.abs(change) >= 5) {
+      const direction = change > 0 ? "increased" : "decreased";
+      highlights.push(`Traffic ${direction} ${Math.abs(change)}% compared to the prior period.`);
     } else {
       highlights.push(`Traffic remained stable across the comparison period.`);
     }
   }
 
-  // 2. Star growth & velocity highlights
-  if (input.starVelocity) {
-    const { weeklyVelocity, growth30d, currentStars } = input.starVelocity;
-    if (growth30d > 0) {
+  // 2. Cloner changes
+  if (
+    input.periodComparison?.cloneUniquesChangePercent !== undefined &&
+    input.periodComparison.cloneUniquesChangePercent !== null
+  ) {
+    const cloneChange = input.periodComparison.cloneUniquesChangePercent;
+    if (Math.abs(cloneChange) >= 20) {
+      const direction = cloneChange > 0 ? "grew" : "dropped";
       highlights.push(
-        `Added ${growth30d.toLocaleString()} stars over the last 30 days (~${weeklyVelocity} stars/week), reaching ${currentStars.toLocaleString()} total stars.`
+        `Unique repository cloners ${direction} ${Math.abs(cloneChange)}% in the same window.`
       );
-    } else if (currentStars > 0) {
-      highlights.push(`Repository has ${currentStars.toLocaleString()} total stars.`);
     }
   }
 
-  // 3. Traffic spike highlights
+  // 3. Star velocity highlights
+  if (input.starVelocity) {
+    const { growth7d, dailyVelocity, currentStars } = input.starVelocity;
+    if (growth7d > 0) {
+      highlights.push(
+        `Added +${growth7d.toLocaleString()} stars in the last 7 days (~${dailyVelocity}/day).`
+      );
+    } else if (currentStars > 0) {
+      highlights.push(`Star count held steady with zero net gain over the past week.`);
+    }
+  }
+
+  // 4. Traffic spike highlights
   if (input.spikes && input.spikes.length > 0) {
     const latestSpike = input.spikes[input.spikes.length - 1];
     highlights.push(
@@ -276,14 +307,18 @@ export function generateChangeHighlights(input: HighlightInput): string[] {
     );
   }
 
-  // 4. Acquisition / Referrer highlights
+  // 5. Acquisition highlights
   if (input.topReferrer && input.topReferrer.count > 0) {
+    const channelName = input.topReferrer.referrer || input.topReferrer.name || "Unknown channel";
+    const uniquesText = input.topReferrer.uniques
+      ? ` (${input.topReferrer.uniques.toLocaleString()} unique visitors)`
+      : "";
     highlights.push(
-      `Top discovery channel: ${input.topReferrer.name} (${input.topReferrer.count.toLocaleString()} visits).`
+      `Top acquisition channel is ${channelName} driving ${input.topReferrer.count.toLocaleString()} views${uniquesText}.`
     );
   }
 
-  // 5. Release correlation highlights (strictly non-causal language)
+  // 6. Release highlights
   if (input.recentRelease) {
     const relTag =
       input.recentRelease.tagName ||
@@ -291,12 +326,13 @@ export function generateChangeHighlights(input: HighlightInput): string[] {
       input.recentRelease.name ||
       "latest";
     highlights.push(
-      `Release ${relTag} published on ${input.recentRelease.publishedAt.slice(0, 10)}; growth activity tracked around this release.`
+      `Recent release ${relTag} published on ${input.recentRelease.publishedAt.slice(0, 10)}.`
     );
   }
 
-  // 6. 14-day tracking persistence reminder if not tracked
-  if (input.isTrackingActive === false) {
+  // 7. Persistence status notice
+  const isTracking = input.isTrackingEnabled ?? input.isTrackingActive ?? false;
+  if (!isTracking) {
     highlights.push(
       `Historical persistence is not enabled yet for this repository; GitHub will delete traffic data older than 14 days.`
     );

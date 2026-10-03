@@ -12,7 +12,7 @@ import {
   ResponsiveContainer,
   ReferenceDot,
 } from "recharts";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { StarPoint } from "@/lib/analytics";
 import { PublicRelease } from "@/lib/github-public";
 
@@ -24,28 +24,38 @@ interface StarHistoryChartProps {
 export default function StarHistoryChart({ data, releases = [] }: Readonly<StarHistoryChartProps>) {
   const chartData = useMemo(() => {
     if (!data || data.length === 0) return [];
-    return data.map((d) => ({
-      date: d.date,
-      displayDate: format(new Date(d.date), "MMM d, yyyy"),
-      stars: d.stars,
-    }));
+    return data.map((d) => {
+      const parsedDate = parseISO(d.date);
+      return {
+        timestamp: parsedDate.getTime(),
+        stars: d.stars,
+      };
+    });
   }, [data]);
 
-  // Match releases to the closest chart dates
+  // Match releases to the closest chart sample by minimum absolute time distance
   const releaseDots = useMemo(() => {
     if (!releases.length || !chartData.length) return [];
-    const dots: Array<{ date: string; stars: number; tag: string }> = [];
+    const dots: Array<{ timestamp: number; stars: number; tag: string }> = [];
 
     releases.forEach((rel) => {
-      const relDate = rel.publishedAt.slice(0, 10);
-      const match = chartData.find((d) => d.date >= relDate);
-      if (match) {
-        dots.push({
-          date: match.date,
-          stars: match.stars,
-          tag: rel.tagName,
-        });
+      const relTime = parseISO(rel.publishedAt).getTime();
+      let closest = chartData[0];
+      let minDiff = Math.abs(chartData[0].timestamp - relTime);
+
+      for (let i = 1; i < chartData.length; i++) {
+        const diff = Math.abs(chartData[i].timestamp - relTime);
+        if (diff < minDiff) {
+          minDiff = diff;
+          closest = chartData[i];
+        }
       }
+
+      dots.push({
+        timestamp: closest.timestamp,
+        stars: closest.stars,
+        tag: rel.tagName,
+      });
     });
 
     return dots;
@@ -81,15 +91,18 @@ export default function StarHistoryChart({ data, releases = [] }: Readonly<StarH
           <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#262626" opacity={0.5} />
             <XAxis
-              dataKey="date"
+              dataKey="timestamp"
+              type="number"
+              scale="time"
+              domain={["dataMin", "dataMax"]}
               stroke="#737373"
               fontSize={11}
               tickLine={false}
-              tickFormatter={(val: string) => {
+              tickFormatter={(ts: number) => {
                 try {
-                  return format(new Date(val), "MMM yy");
+                  return format(new Date(ts), "MMM yy");
                 } catch {
-                  return val;
+                  return String(ts);
                 }
               }}
             />
@@ -113,7 +126,7 @@ export default function StarHistoryChart({ data, releases = [] }: Readonly<StarH
               formatter={(value) => [Number(value).toLocaleString(), "Stars"]}
               labelFormatter={(label) => {
                 try {
-                  return format(new Date(String(label)), "MMMM d, yyyy");
+                  return format(new Date(Number(label)), "MMMM d, yyyy");
                 } catch {
                   return String(label);
                 }
@@ -130,7 +143,7 @@ export default function StarHistoryChart({ data, releases = [] }: Readonly<StarH
             {releaseDots.map((dot) => (
               <ReferenceDot
                 key={dot.tag}
-                x={dot.date}
+                x={dot.timestamp}
                 y={dot.stars}
                 r={4}
                 fill="#fbbf24"

@@ -1,6 +1,6 @@
 # 📊 GitHub Traffic Analytics — Product Roadmap (2026)
 
-> A GitHub growth intelligence platform that explains why repositories are growing, preserves analytics GitHub deletes after 14 days, and alerts developers when something meaningful changes.
+> A GitHub growth intelligence platform that explains why repositories are growing, preserves analytics GitHub deletes after 14 days, and provides clear briefings when something meaningful changes.
 
 ---
 
@@ -38,7 +38,7 @@
 - [x] **"What Changed" briefings**: Pre-computed bulleted change summaries before diving into raw charts.
 - [x] **Contextual AI explanations**: Structured LLM insights (`claude-haiku-4-5`) explaining already-computed deterministic metrics.
 - [x] **Progressive disclosure**: Public metrics accessible to anyone; private traffic analytics securely unlocked for verified repository owners/collaborators.
-- [x] **Zero-token client architecture**: GitHub OAuth tokens remain strictly server-side in encrypted JWTs.
+- [x] **Secure token architecture**: GitHub OAuth tokens are encrypted in an httpOnly session cookie and never exposed to client JavaScript.
 
 ---
 
@@ -46,7 +46,7 @@
 
 #### Deeper Intelligence
 
-- [ ] **Deterministic anomaly detection**: Automated z-score / baseline deviations highlighting traffic spikes and sudden drops.
+- [ ] **Deterministic anomaly detection**: Add z-score analysis and sudden-drop detection beyond the shipped moving-average spike detector.
 - [ ] **Release impact analysis**: Windowed comparison of traffic and star velocity 14 days before vs 14 days after major releases.
 - [ ] **Weekly digest summaries**: Automated Monday morning markdown briefings summarizing the past 7 days of repository growth.
 - [ ] **Multi-repository comparison**: Side-by-side growth and star velocity comparison across public and private repositories.
@@ -76,7 +76,7 @@
 To maintain product focus, reliability, and security, the following are intentionally out of scope:
 
 - ❌ **3D / WebGL dashboards / VR / AR**: Complex 3D visualizations add unnecessary bundle size and degrade accessibility. Clean, responsive SVG/Canvas charts are faster and more readable.
-- ❌ **Native mobile apps (React Native / iOS / Android)**: The responsive web app is fully mobile-compatible and installs as a PWA.
+- ❌ **Native mobile apps (React Native / iOS / Android)**: The responsive web app is fully mobile-compatible across desktop and mobile browsers.
 - ❌ **Blockchain / Web3 analytics**: Unrelated to developer tools and repository growth intelligence.
 - ❌ **Autonomous AI agents altering repositories**: The platform provides analytical intelligence, not unmonitored code generation.
 - ❌ **Heavy enterprise multi-tenant database clusters**: The architecture leverages serverless edge compute (Cloudflare Pages, D1, Cron Triggers) to maintain zero server maintenance and a free tier.
@@ -88,4 +88,4 @@ To maintain product focus, reliability, and security, the following are intentio
 1. **Developer-native**: Built for developers who value fast, clean, and reliable data over decorative fluff.
 2. **Show value before asking for auth**: Anyone can analyze public repositories immediately; authentication is reserved for private metrics.
 3. **Deterministic metrics first**: Math and anomaly detection are computed by tested code; AI is used strictly to narrate and explain, never to calculate.
-4. **Zero credential leakage**: Tokens never touch the browser; private repository traffic is never exposed through public routes or badges.
+4. **Tokens never touch client JavaScript**: NextAuth session tokens are stored in encrypted httpOnly cookies, keeping GitHub access tokens inaccessible to client-side code.

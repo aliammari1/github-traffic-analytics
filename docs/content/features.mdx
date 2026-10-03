@@ -21,8 +21,7 @@ Interactive trajectory of repository stargazers with derived velocity metrics:
 ## Release event correlation
 
 Major releases fetched from GitHub and plotted against the repository timeline. Provides
-contextual awareness of growth acceleration around key launches using strictly non-causal
-attribution language ("Growth accelerated around this release").
+contextual awareness of growth around key launches using clean publication dates.
 
 ## Traffic dashboard & 14-day limit bypass
 
@@ -32,11 +31,10 @@ for authenticated owners and collaborators.
 
 ## Deterministic metrics & contextual AI insights
 
-A deterministic statistical engine calculates rate of change, moving averages, and spikes.
-The AI insights panel then consumes these pre-calculated metrics and calls the Anthropic
-Messages API (`claude-haiku-4-5`) to return a concise, actionable briefing: what changed,
-growth drivers, and notable traffic channels. Requires `ANTHROPIC_API_KEY`; degrades
-gracefully (HTTP 503) when not configured.
+Deterministic analytics calculate star velocity, period comparisons, and release highlights in pure TypeScript.
+The AI insights panel separately receives the repository's aggregated traffic telemetry and calls the Anthropic
+Messages API (`claude-haiku-4-5`) to stream a concise, actionable summary of views, unique visitors, top referrers,
+and popular content paths. Requires `ANTHROPIC_API_KEY`; degrades gracefully (HTTP 503) when not configured.
 
 ## Daily snapshots (beyond GitHub's 14-day window)
 
