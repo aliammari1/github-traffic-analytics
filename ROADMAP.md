@@ -38,6 +38,7 @@ More legitimate GitHub stars & organic adoption
 - [x] **Deterministic star history & velocity**: 7-day star growth, 30-day growth, weekly run-rate, and moving-average velocity comparisons.
 - [x] **Repository momentum scoring**: Transparent 0–100 momentum score based on acceleration ratio damped by repository scale.
 - [x] **Release event timeline & impact**: Temporal association analysis comparing 14 days before vs. 14 days after release events with strictly non-causal language.
+- [x] **Shareable launch reports (`/launch/[owner]/[repo]?tag=...`)**: Public before/after release reports with deterministic velocity deltas, a marked star trajectory, and share/copy actions.
 - [x] **Multi-repository comparison (`/compare`)**: Side-by-side growth trajectory comparison supporting 2–4 repositories with shareable URL state (`?repos=owner/repo,owner2/repo2`).
 - [x] **Embeddable README growth card (`/api/card/[owner]/[repo]`)**: Zero-dependency SVG growth cards with multiple themes (`github-dark`, `github-light`, `transparent`, `dracula`, `nord`, `catppuccin`) and one-click "Copy Markdown" action.
 - [x] **Dynamic OpenGraph social cards (`/repo/[owner]/[repo]/opengraph-image`)**: Native Next.js 16 Edge OpenGraph and Twitter cards for rich unfurls on X, LinkedIn, Discord, and Slack.

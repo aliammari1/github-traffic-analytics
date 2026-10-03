@@ -9,7 +9,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXTAUTH_URL || "https://github-traffic-analytics.pages.dev"),
+  metadataBase: new URL(
+    process.env.NEXTAUTH_URL || "https://github-traffic-analytics.ali-ammari.workers.dev"
+  ),
   title: "GitHub Traffic Analytics",
   description:
     "Understand why GitHub repositories grow. Explore public star history, releases, and momentum, then preserve private traffic beyond 14 days.",

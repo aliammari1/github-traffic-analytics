@@ -1,5 +1,17 @@
 // SPDX-License-Identifier: MIT
 
+const MOCK_STAR_HISTORY = (() => {
+  let stars = 124340;
+  const releaseTime = Date.UTC(2026, 8, 15);
+  return Array.from({ length: 40 }, (_, index) => {
+    const date = new Date(Date.UTC(2026, 7, 25 + index));
+    if (index > 0) {
+      stars += date.getTime() <= releaseTime ? 10 : 25;
+    }
+    return { date: date.toISOString().slice(0, 10), stars };
+  });
+})();
+
 export const MOCK_PUBLIC_ANALYSIS = {
   repository: {
     id: 70107786,
@@ -21,15 +33,7 @@ export const MOCK_PUBLIC_ANALYSIS = {
     topics: ["react", "framework", "nextjs"],
     license: "MIT",
   },
-  starHistory: [
-    { date: "2016-10-25", stars: 0 },
-    { date: "2018-01-01", stars: 22000 },
-    { date: "2020-01-01", stars: 45000 },
-    { date: "2022-01-01", stars: 78000 },
-    { date: "2024-01-01", stars: 110000 },
-    { date: "2026-09-01", stars: 124500 },
-    { date: "2026-10-01", stars: 125000 },
-  ],
+  starHistory: MOCK_STAR_HISTORY,
   starVelocity: {
     currentStars: 125000,
     growth7d: 120,

@@ -56,9 +56,20 @@ test.describe("Public Repository Growth Intelligence", () => {
     await page.getByRole("tab", { name: /Releases/i }).click();
     await expect(page.getByText("v16.0.0").first()).toBeVisible();
     await expect(page.getByText("Release Timeline & Events")).toBeVisible();
+    await expect(page.getByRole("link", { name: /Launch report/i })).toBeVisible();
 
     // 8. Navigate to private tab (Traffic) as unauthenticated visitor
     await page.getByRole("tab", { name: /Traffic/i }).click();
     await expect(page.getByText("Unlock Private traffic analytics", { exact: true })).toBeVisible();
+
+    // 9. Open and verify the shareable launch report
+    await page.getByRole("tab", { name: /Releases/i }).click();
+    await page.getByRole("link", { name: /Launch report/i }).click();
+    await expect(page).toHaveURL(/\/launch\/vercel\/next\.js\?tag=v16\.0\.0/);
+    await expect(page.getByRole("heading", { name: "v16.0.0" })).toBeVisible();
+    await expect(page.getByText("+140", { exact: true })).toBeVisible();
+    await expect(page.getByText("+350", { exact: true })).toBeVisible();
+    await expect(page.getByText("+150%", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Share launch report/i })).toBeVisible();
   });
 });
