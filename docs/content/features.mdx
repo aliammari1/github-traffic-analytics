@@ -46,6 +46,21 @@ upserts one row per day/metric into a **D1** database. The dashboard's
 - **Opt in:** the "Track this repo" button stores your repo + token in D1.
 - **Read history:** `GET /api/snapshots?owner=…&repo=…` returns merged daily history.
 
+## Growth signals
+
+The repository overview checks complete UTC days for views and clones. It compares
+the latest completed day with the median of at least five observations from the
+preceding seven days. A spike needs at least twice the baseline and ten extra
+events; a drop needs a baseline of at least 20, half the usual count or less,
+and ten fewer events. Seven-day totals are compared only when both weeks have
+all seven days. Public star signals compare two complete seven-day windows.
+
+The pure analytics engine also supports referral-share changes, new leading
+referrers, and popular-path surges when comparable historical windows are
+available. GitHub's current top-referrer and path responses alone do not supply
+those older windows, so the web overview does not invent them. A nearby release
+is shown as timing context, never a claim that it caused the change.
+
 ## Traffic badge (the viral loop)
 
 Every tracked repo gets a public, embeddable SVG badge of its **total accumulated

@@ -40,6 +40,8 @@ test.describe("Public Repository Growth Intelligence", () => {
     // 5. Verify Overview highlights
     await expect(page.getByText("What Changed & Growth Highlights")).toBeVisible();
     await expect(page.getByText(/Added 500 stars over the last 30 days/)).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Growth signals" })).toBeVisible();
+    await expect(page.getByText(/No change crossed the signal thresholds/)).toBeVisible();
 
     // A public report can be distributed through its link and README card.
     await expect(page.getByRole("button", { name: "Share" })).toBeVisible();

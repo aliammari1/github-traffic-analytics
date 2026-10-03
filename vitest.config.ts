@@ -28,6 +28,7 @@ export default defineConfig({
       // rather than diluted by presentational page shells / shadcn primitives.
       include: [
         "src/lib/analytics.ts",
+        "src/lib/anomalies.ts",
         "src/lib/github-public.ts",
         "src/lib/github.ts",
         "src/lib/insights.ts",
@@ -35,6 +36,7 @@ export default defineConfig({
         "src/lib/server-auth.ts",
         "src/lib/utils.ts",
         "src/components/TrafficDashboard.tsx",
+        "src/components/AnomalyList.tsx",
         "src/components/RepositorySelector.tsx",
         "src/components/InsightsPanel.tsx",
         "src/app/api/traffic/route.ts",
