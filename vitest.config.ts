@@ -27,6 +27,7 @@ export default defineConfig({
       // Scope coverage to the units we actually test so the 80% gate is meaningful
       // rather than diluted by presentational page shells / shadcn primitives.
       include: [
+        "src/lib/analytics.ts",
         "src/lib/github.ts",
         "src/lib/insights.ts",
         "src/lib/snapshots.ts",
