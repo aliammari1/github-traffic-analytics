@@ -13,18 +13,7 @@ import TrafficDashboard from "@/components/TrafficDashboard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  TrendingUp,
-  Eye,
-  GitFork,
-  ArrowRight,
-  BarChart3,
-  Search,
-  Star,
-  ShieldAlert,
-  Clock,
-  Sparkles,
-} from "lucide-react";
+import { TrendingUp, ArrowRight, BarChart3, Search, Star, Clock, Sparkles } from "lucide-react";
 import { Github } from "lucide-brands";
 
 const EXAMPLE_REPOS = ["facebook/react", "vercel/next.js", "astral-sh/ruff"];

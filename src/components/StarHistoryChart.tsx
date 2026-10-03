@@ -110,10 +110,10 @@ export default function StarHistoryChart({ data, releases = [] }: Readonly<StarH
                 color: "#f5f5f5",
                 fontSize: "12px",
               }}
-              formatter={(value: any) => [Number(value).toLocaleString(), "Stars"]}
-              labelFormatter={(label: any) => {
+              formatter={(value) => [Number(value).toLocaleString(), "Stars"]}
+              labelFormatter={(label) => {
                 try {
-                  return format(new Date(label), "MMMM d, yyyy");
+                  return format(new Date(String(label)), "MMMM d, yyyy");
                 } catch {
                   return String(label);
                 }

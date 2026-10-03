@@ -821,7 +821,13 @@ export default function RepositoryAnalyticsPage({
   );
 }
 
-function PrivateUnlockCard({ session, featureName }: { session: any; featureName: string }) {
+function PrivateUnlockCard({
+  session,
+  featureName,
+}: {
+  session: { user?: { name?: string | null } } | null;
+  featureName: string;
+}) {
   return (
     <Card className="border-border bg-card/60 max-w-xl mx-auto text-center p-8 my-12">
       <div className="inline-flex p-3 rounded-full bg-secondary/50 text-muted-foreground mb-4">

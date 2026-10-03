@@ -171,14 +171,14 @@ describe("analytics layer", () => {
           clonesChangePercent: -5,
         },
         spikes: [{ date: "2026-09-12", count: 4500, baseline: 1200, multiplier: 3.8 }],
-        topReferrer: { name: "news.ycombinator.com", count: 2100 },
+        topReferrer: { name: "developer-community", count: 2100 },
         recentRelease: { name: "v16.3.0", tag: "v16.3.0", publishedAt: "2026-09-10T12:00:00Z" },
         isTrackingActive: false,
       });
 
       expect(highlights.length).toBeGreaterThanOrEqual(5);
       expect(highlights.some((h) => h.includes("Traffic increased 32.5%"))).toBe(true);
-      expect(highlights.some((h) => h.includes("news.ycombinator.com"))).toBe(true);
+      expect(highlights.some((h) => h.includes("developer-community"))).toBe(true);
       expect(
         highlights.some((h) => h.includes("growth activity tracked around this release"))
       ).toBe(true);
