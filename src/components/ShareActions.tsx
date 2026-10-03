@@ -10,13 +10,26 @@ import {
   type GrowthCardStyle,
   type GrowthCardTheme,
 } from "@/lib/growth-card";
+import { formatMilestone, getHighestMilestone } from "@/lib/milestone-card";
 
-export default function ShareActions({ owner, repo }: { owner: string; repo: string }) {
+export default function ShareActions({
+  owner,
+  repo,
+  currentStars,
+}: {
+  owner: string;
+  repo: string;
+  currentStars: number;
+}) {
   const [theme, setTheme] = useState<GrowthCardTheme>("github-dark");
   const [style, setStyle] = useState<GrowthCardStyle>("default");
   const [feedback, setFeedback] = useState("");
   const path = `/repo/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
   const cardPath = `/api/card/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}?theme=${theme}&style=${style}`;
+  const milestone = getHighestMilestone(currentStars);
+  const milestonePath = milestone
+    ? `/api/card/milestone/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}?milestone=${milestone}&theme=${theme}`
+    : null;
 
   async function copy(value: string, message: string) {
     try {
@@ -77,6 +90,20 @@ export default function ShareActions({ owner, repo }: { owner: string; repo: str
         >
           Copy Markdown card
         </Button>
+        {milestone && milestonePath && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() =>
+              copy(
+                `[![${owner}/${repo} ${formatMilestone(milestone)}+ stars milestone](${window.location.origin}${milestonePath})](${window.location.origin}${path})`,
+                `${formatMilestone(milestone)}+ milestone card copied.`
+              )
+            }
+          >
+            Copy {formatMilestone(milestone)} milestone card
+          </Button>
+        )}
       </div>
       <div className="flex flex-wrap gap-3">
         <label className="flex items-center gap-3 text-sm" htmlFor="card-style">

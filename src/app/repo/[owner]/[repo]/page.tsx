@@ -432,7 +432,7 @@ export default function RepositoryAnalyticsPage({
             </CardContent>
           </Card>
 
-          <ShareActions owner={owner} repo={repo} />
+          <ShareActions owner={owner} repo={repo} currentStars={analysis.repository.starsCount} />
 
           {/* Public Star Growth Chart */}
           <Card>
