@@ -200,12 +200,12 @@ export default function RepositoriesPage() {
                           </Badge>
                         )}
                       </div>
-                      <Link href={`/repo/${repo.owner.login}/${repo.name}`}>
-                        <Button size="sm" variant="outline" className="gap-1.5 text-xs h-7">
+                      <Button asChild size="sm" variant="outline" className="gap-1.5 text-xs h-7">
+                        <Link href={`/repo/${repo.owner.login}/${repo.name}`}>
                           <BarChart3 className="h-3.5 w-3.5" />
                           View Analytics
-                        </Button>
-                      </Link>
+                        </Link>
+                      </Button>
                     </div>
                     <p className="text-sm text-muted-foreground mb-2">{repo.owner.login}</p>
                     {repo.description && (
