@@ -70,6 +70,17 @@ empty before tracking begins. The export route checks both your signed-in
 session and current GitHub traffic access, and restricts the D1 query to your
 own snapshot records. Use optional `from` and `to` ISO dates to narrow a large
 archive. The response is private and never cached publicly.
+## Weekly report preview
+
+Authorized maintainers can preview the latest seven complete UTC days from the
+repository's Insights tab. The report combines D1 views, unique views, clones,
+unique clones, available public star growth, releases during the period, and
+deterministic growth signals. Traffic totals are shown only when all seven days
+were captured; partial data is labeled unavailable rather than zero. Public
+star metrics can be unavailable for private repositories or incomplete star
+history. The preview is not sent anywhere until a future delivery option is
+explicitly enabled.
+
 
 ## Traffic badge (the viral loop)
 

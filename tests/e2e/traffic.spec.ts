@@ -127,6 +127,28 @@ test("owner can export an empty archive and sees a clear confirmation", async ({
   expect(download.suggestedFilename()).toBe("alice-repo-one-traffic.csv");
   await expect(page.getByRole("status")).toContainText("No snapshots have been collected yet");
 });
+test("owner previews a weekly report with honest missing metrics", async ({ page }) => {
+  await mockBackend(page);
+  await page.route("**/api/report/weekly**", (route) =>
+    route.fulfill({
+      json: {
+        period: { from: "2026-09-21", to: "2026-09-27" },
+        stars: { count: 18 },
+        views: { count: 70 },
+        clones: { count: null },
+        highlights: ["Star growth: +18 this week."],
+        strongestAnomaly: null,
+      },
+    })
+  );
+  await page.goto("/repositories");
+  await page.getByText("repo-one").click();
+  await page.getByRole("tab", { name: /Insights/i }).click();
+  await page.getByRole("button", { name: "Preview weekly report" }).click();
+  await expect(page.getByText("2026-09-21 to 2026-09-27")).toBeVisible();
+  await expect(page.getByText("Star growth: +18 this week.")).toBeVisible();
+  await expect(page.getByText("Unavailable", { exact: true })).toBeVisible();
+});
 
 test("unauthenticated visitor sees the marketing sign-in page", async ({ page }) => {
   // NextAuth's client treats any non-null body as a session; return null for "signed out".
