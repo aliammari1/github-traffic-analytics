@@ -22,6 +22,7 @@ import {
   Calendar,
   Layers,
   Check,
+  Copy,
 } from "lucide-react";
 import { Github } from "lucide-brands";
 import { Button } from "@/components/ui/button";
@@ -92,6 +93,7 @@ function CompareContent() {
   const [inputError, setInputError] = useState<string | null>(null);
   const [dataMap, setDataMap] = useState<Record<string, RepoComparisonData>>({});
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
+  const [cardCopyFeedback, setCardCopyFeedback] = useState<string | null>(null);
   const fetchedKeysRef = useRef<Set<string>>(new Set());
 
   const updateUrl = useCallback(
@@ -209,6 +211,19 @@ function CompareContent() {
     });
   };
 
+  const handleCopyComparisonCard = () => {
+    if (typeof window === "undefined" || repoList.length !== 2) return;
+    const [left, right] = repoList;
+    const cardUrl = `${window.location.origin}/api/card/compare?a=${encodeURIComponent(left)}&b=${encodeURIComponent(right)}`;
+    const reportUrl = `${window.location.origin}/compare?repos=${encodeURIComponent(repoList.join(","))}`;
+    const markdown = `[![${left} vs ${right} growth](${cardUrl})](${reportUrl})`;
+
+    navigator.clipboard.writeText(markdown).then(() => {
+      setCardCopyFeedback("README card copied!");
+      setTimeout(() => setCardCopyFeedback(null), 3000);
+    });
+  };
+
   // Harmonize chart data across all loaded repos
   const chartData = useMemo(() => {
     const loaded = repoList
@@ -323,6 +338,21 @@ function CompareContent() {
 
           {repoList.length > 0 && (
             <div className="flex items-center gap-2">
+              {repoList.length === 2 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopyComparisonCard}
+                  className="gap-2 shrink-0"
+                >
+                  {cardCopyFeedback ? (
+                    <Check className="h-4 w-4 text-emerald-400" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                  <span>{cardCopyFeedback ?? "Copy README card"}</span>
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
