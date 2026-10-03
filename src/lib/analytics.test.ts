@@ -60,6 +60,7 @@ describe("analytics layer", () => {
       expect(parseRepoInput("https://gitlab.com/owner/repo")).toBeNull();
       expect(parseRepoInput("-invalid-owner/repo")).toBeNull();
       expect(parseRepoInput("owner/invalid repo with spaces")).toBeNull();
+      expect(parseRepoInput(`${"/".repeat(600)}owner/repo`)).toBeNull();
     });
   });
 

@@ -29,6 +29,7 @@ export default defineConfig({
       include: [
         "src/lib/analytics.ts",
         "src/lib/anomalies.ts",
+        "src/lib/history-export.ts",
         "src/lib/github-public.ts",
         "src/lib/github.ts",
         "src/lib/insights.ts",
@@ -44,6 +45,7 @@ export default defineConfig({
         "src/app/api/repositories/route.ts",
         "src/app/api/insights/route.ts",
         "src/app/api/snapshots/route.ts",
+        "src/app/api/snapshots/export/route.ts",
         "src/app/api/track/route.ts",
       ],
       exclude: [

@@ -268,6 +268,9 @@ export interface HighlightInput {
  */
 export function parseRepoInput(input: string): RepoIdentifier | null {
   if (!input || typeof input !== "string") return null;
+  // A valid owner/repository identifier is far shorter; cap input before any
+  // normalization so hostile slash-heavy values cannot consume regex time.
+  if (input.length > 512) return null;
 
   let cleaned = input.trim();
   if (!cleaned) return null;
@@ -276,7 +279,7 @@ export function parseRepoInput(input: string): RepoIdentifier | null {
   cleaned = cleaned.replace(/^(?:https?:\/\/)?(?:www\.)?github\.com\//i, "");
 
   // Strip leading and trailing slashes
-  cleaned = cleaned.replace(/^\/+|\/+$/g, "");
+  cleaned = cleaned.replace(/^\/+/, "").replace(/\/+$/, "");
 
   // Strip .git extension if present at end or before a slash
   cleaned = cleaned.replace(/\.git(?:\/|$)/i, "");

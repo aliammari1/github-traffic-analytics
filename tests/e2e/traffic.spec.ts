@@ -103,6 +103,31 @@ test("signed-in user selects a repo and views its traffic", async ({ page }) => 
   await expect(page.getByText("Historical traffic")).toBeVisible();
 });
 
+test("owner can export an empty archive and sees a clear confirmation", async ({ page }) => {
+  await mockBackend(page);
+  await page.route("**/api/snapshots/export**", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "text/csv",
+      headers: {
+        "content-disposition": 'attachment; filename="alice-repo-one-traffic.csv"',
+        "x-export-rows": "0",
+      },
+      body: "day,metric,count,uniques\r\n",
+    })
+  );
+  await page.route("**/api/snapshots?**", (route) => route.fulfill({ json: { history: [] } }));
+  await page.goto("/repositories");
+  await page.getByText("repo-one").click();
+  await page.getByRole("tab", { name: /Traffic/i }).click();
+  await expect(page.getByText(/No historical data yet/)).toBeVisible();
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export CSV" }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe("alice-repo-one-traffic.csv");
+  await expect(page.getByRole("status")).toContainText("No snapshots have been collected yet");
+});
+
 test("unauthenticated visitor sees the marketing sign-in page", async ({ page }) => {
   // NextAuth's client treats any non-null body as a session; return null for "signed out".
   await page.route("**/api/auth/session", (route) => route.fulfill({ json: null }));
