@@ -28,6 +28,7 @@ export default defineConfig({
       // rather than diluted by presentational page shells / shadcn primitives.
       include: [
         "src/lib/analytics.ts",
+        "src/lib/github-public.ts",
         "src/lib/github.ts",
         "src/lib/insights.ts",
         "src/lib/snapshots.ts",
@@ -37,6 +38,7 @@ export default defineConfig({
         "src/components/RepositorySelector.tsx",
         "src/components/InsightsPanel.tsx",
         "src/app/api/traffic/route.ts",
+        "src/app/api/public/repo/route.ts",
         "src/app/api/repositories/route.ts",
         "src/app/api/insights/route.ts",
         "src/app/api/snapshots/route.ts",
