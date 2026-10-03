@@ -42,6 +42,7 @@ More legitimate GitHub stars & organic adoption
 - [x] **Multi-repository comparison (`/compare`)**: Side-by-side growth trajectory comparison supporting 2–4 repositories with shareable URL state (`?repos=owner/repo,owner2/repo2`).
 - [x] **Embeddable two-repository comparison card (`/api/card/compare`)**: README-safe SVG comparing total stars, 7-day growth, 30-day growth, and weekly velocity for two public repositories.
 - [x] **Embeddable README growth cards (`/api/card/[owner]/[repo]`)**: Zero-dependency SVG cards with metric and `?style=sparkline` variants, multiple themes (`github-dark`, `github-light`, `transparent`, `dracula`, `nord`, `catppuccin`), and one-click "Copy Markdown" actions.
+- [x] **Verified star milestone cards (`/api/card/milestone/[owner]/[repo]`)**: Shareable SVG assets for supported star thresholds; requests for milestones the repository has not reached are rejected.
 - [x] **Dynamic OpenGraph social cards (`/repo/[owner]/[repo]/opengraph-image`)**: Native Next.js 16 Edge OpenGraph and Twitter cards for rich unfurls on X, LinkedIn, Discord, and Slack.
 - [x] **Contextual AI explanations**: Structured LLM insights (`claude-haiku-4-5`) explaining precomputed telemetry without hallucinating math.
 

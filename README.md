@@ -65,6 +65,14 @@ Add `?theme=<name>` to the image URL. Themes also work with `style=sparkline`:
 [![Repo Growth](https://github-traffic-analytics.ali-ammari.workers.dev/api/card/owner/repo?theme=nord)](https://github-traffic-analytics.ali-ammari.workers.dev/repo/owner/repo)
 ```
 
+### Celebrate a real star milestone
+
+For repositories that have crossed a supported public star threshold, the report offers a verified milestone card. The endpoint refuses milestone values the repository has not reached:
+
+```markdown
+[![100k+ stars milestone](https://github-traffic-analytics.ali-ammari.workers.dev/api/card/milestone/owner/repo?milestone=100000)](https://github-traffic-analytics.ali-ammari.workers.dev/repo/owner/repo)
+```
+
 You can also embed the classic **total views badge** that counts traffic accumulated beyond GitHub's 14-day limit:
 
 ```markdown

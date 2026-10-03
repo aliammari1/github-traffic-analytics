@@ -45,6 +45,7 @@ test.describe("Public Repository Growth Intelligence", () => {
     await expect(page.getByRole("button", { name: "Share" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Copy link" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Copy Markdown card" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Copy 100k milestone card" })).toBeVisible();
     const growthCard = page.locator('img[src*="/api/card/vercel/next.js"]');
     await expect(growthCard).toBeVisible();
     await page.getByLabel("Card style").selectOption("sparkline");
