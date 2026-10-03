@@ -30,6 +30,7 @@ export default defineConfig({
         "src/lib/analytics.ts",
         "src/lib/anomalies.ts",
         "src/lib/history-export.ts",
+        "src/lib/weekly-report.ts",
         "src/lib/github-public.ts",
         "src/lib/github.ts",
         "src/lib/insights.ts",
@@ -38,6 +39,7 @@ export default defineConfig({
         "src/lib/utils.ts",
         "src/components/TrafficDashboard.tsx",
         "src/components/AnomalyList.tsx",
+        "src/components/WeeklyReportPreview.tsx",
         "src/components/RepositorySelector.tsx",
         "src/components/InsightsPanel.tsx",
         "src/app/api/traffic/route.ts",
@@ -46,6 +48,7 @@ export default defineConfig({
         "src/app/api/insights/route.ts",
         "src/app/api/snapshots/route.ts",
         "src/app/api/snapshots/export/route.ts",
+        "src/app/api/report/weekly/route.ts",
         "src/app/api/track/route.ts",
       ],
       exclude: [

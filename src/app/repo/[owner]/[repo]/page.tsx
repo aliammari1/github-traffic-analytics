@@ -31,6 +31,7 @@ import StarHistoryChart from "@/components/StarHistoryChart";
 import ShareActions from "@/components/ShareActions";
 import HistoricalTraffic from "@/components/HistoricalTraffic";
 import InsightsPanel from "@/components/InsightsPanel";
+import WeeklyReportPreview from "@/components/WeeklyReportPreview";
 import AnomalyList from "@/components/AnomalyList";
 import type { PublicRepoAnalysis } from "@/lib/github-public";
 import { calculateReleaseImpact } from "@/lib/analytics";
@@ -984,49 +985,52 @@ export default function RepositoryAnalyticsPage({
           className={activeTab === "insights" ? "space-y-6" : "hidden"}
         >
           {hasPrivateAccess && privateTraffic ? (
-            <InsightsPanel
-              payload={{
-                repoCount: 1,
-                totalViews: privateTraffic.views.count,
-                totalUniques: privateTraffic.views.uniques,
-                totalClones: privateTraffic.clones.count,
-                totalCloneUniques: privateTraffic.clones.uniques,
-                totalStars: meta.starsCount,
-                topReferrers: privateTraffic.referrers,
-                topPaths: privateTraffic.paths,
-                daily: privateTraffic.views.views.map((v) => ({
-                  date: v.timestamp.slice(0, 10),
-                  views: v.count,
-                  uniques: v.uniques,
-                })),
-                context: {
-                  repoName: meta.fullName,
-                  currentStars: meta.starsCount,
-                  stars7d: starVelocity.growth7d,
-                  stars30d: starVelocity.growth30d,
-                  weeklyVelocityChange:
-                    starVelocity.growth30d > 0
-                      ? Math.round(
-                          ((starVelocity.growth7d - (starVelocity.growth30d * 7) / 30) /
-                            Math.max(1, (starVelocity.growth30d * 7) / 30)) *
-                            100
-                        )
-                      : null,
-                  release: releases[0]
-                    ? {
-                        tag: releases[0].tagName,
-                        name: releases[0].name,
-                        daysAgo: Math.max(
-                          0,
-                          Math.floor(
-                            (mountTime - new Date(releases[0].publishedAt).getTime()) / 86_400_000
+            <>
+              <WeeklyReportPreview owner={owner} repo={repo} />
+              <InsightsPanel
+                payload={{
+                  repoCount: 1,
+                  totalViews: privateTraffic.views.count,
+                  totalUniques: privateTraffic.views.uniques,
+                  totalClones: privateTraffic.clones.count,
+                  totalCloneUniques: privateTraffic.clones.uniques,
+                  totalStars: meta.starsCount,
+                  topReferrers: privateTraffic.referrers,
+                  topPaths: privateTraffic.paths,
+                  daily: privateTraffic.views.views.map((v) => ({
+                    date: v.timestamp.slice(0, 10),
+                    views: v.count,
+                    uniques: v.uniques,
+                  })),
+                  context: {
+                    repoName: meta.fullName,
+                    currentStars: meta.starsCount,
+                    stars7d: starVelocity.growth7d,
+                    stars30d: starVelocity.growth30d,
+                    weeklyVelocityChange:
+                      starVelocity.growth30d > 0
+                        ? Math.round(
+                            ((starVelocity.growth7d - (starVelocity.growth30d * 7) / 30) /
+                              Math.max(1, (starVelocity.growth30d * 7) / 30)) *
+                              100
                           )
-                        ),
-                      }
-                    : null,
-                },
-              }}
-            />
+                        : null,
+                    release: releases[0]
+                      ? {
+                          tag: releases[0].tagName,
+                          name: releases[0].name,
+                          daysAgo: Math.max(
+                            0,
+                            Math.floor(
+                              (mountTime - new Date(releases[0].publishedAt).getTime()) / 86_400_000
+                            )
+                          ),
+                        }
+                      : null,
+                  },
+                }}
+              />
+            </>
           ) : (
             <PrivateUnlockCard
               session={session}
