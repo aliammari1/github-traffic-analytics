@@ -16,7 +16,7 @@
     {
       "binding": "DB",
       "database_name": "traffic_analytics",
-      "database_id": "00000000-0000-0000-0000-000000000000"
+      "database_id": "bc3f8148-8b94-4311-a609-b15ad30a6db0"
     }
   ],
   "observability": {

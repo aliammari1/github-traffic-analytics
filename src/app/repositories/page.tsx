@@ -8,7 +8,16 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Repository } from "@/lib/github";
-import { GitBranch, Star, Eye, ArrowLeft, ExternalLink, Calendar, GitFork } from "lucide-react";
+import {
+  GitBranch,
+  Star,
+  Eye,
+  ArrowLeft,
+  ExternalLink,
+  Calendar,
+  GitFork,
+  BarChart3,
+} from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 /**
@@ -172,26 +181,31 @@ export default function RepositoriesPage() {
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <a
-                        href={`https://github.com/${repo.full_name}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-medium hover:underline flex items-center gap-1"
-                      >
-                        {repo.name}
-                        <ExternalLink className="h-3 w-3 opacity-50" />
-                      </a>
-                      {repo.private && (
-                        <Badge variant="secondary" className="text-xs">
-                          Private
-                        </Badge>
-                      )}
-                      {(repo.permissions?.admin || repo.permissions?.push) && (
-                        <Badge variant="outline" className="text-xs">
-                          Traffic Available
-                        </Badge>
-                      )}
+                    <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/repo/${repo.owner.login}/${repo.name}`}
+                          className="font-medium hover:underline text-foreground"
+                        >
+                          {repo.name}
+                        </Link>
+                        {repo.private && (
+                          <Badge variant="secondary" className="text-xs">
+                            Private
+                          </Badge>
+                        )}
+                        {(repo.permissions?.admin || repo.permissions?.push) && (
+                          <Badge variant="outline" className="text-xs">
+                            Traffic Available
+                          </Badge>
+                        )}
+                      </div>
+                      <Button asChild size="sm" variant="outline" className="gap-1.5 text-xs h-7">
+                        <Link href={`/repo/${repo.owner.login}/${repo.name}`}>
+                          <BarChart3 className="h-3.5 w-3.5" />
+                          View Analytics
+                        </Link>
+                      </Button>
                     </div>
                     <p className="text-sm text-muted-foreground mb-2">{repo.owner.login}</p>
                     {repo.description && (

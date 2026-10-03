@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles } from "lucide-react";
+import { Sparkles, TrendingUp, Tag, Activity, BarChart2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { AggregatedTrafficPayload } from "@/lib/insights";
 
@@ -11,25 +11,30 @@ interface InsightsPanelProps {
   payload: AggregatedTrafficPayload;
 }
 
+type InsightAction = "growth" | "release" | "change" | "traffic";
+
 /**
- * "Summarize my traffic" panel. On demand, POSTs the aggregated traffic payload
- * to /api/insights and renders the AI-generated briefing. Handles loading and
- * error states, including the "not configured" (503) case.
+ * Contextual AI Intelligence panel.
+ *
+ * Supports deterministic contextual actions ("Explain this growth", "Explain this release period",
+ * "What changed?", "Summarize my traffic") based on structured precomputed telemetry.
  */
 export default function InsightsPanel({ payload }: Readonly<InsightsPanelProps>) {
   const [summary, setSummary] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [activeAction, setActiveAction] = useState<InsightAction | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const generate = async () => {
+  const generate = async (action: InsightAction = "traffic") => {
     setLoading(true);
+    setActiveAction(action);
     setError(null);
     setSummary(null);
     try {
       const response = await fetch("/api/insights", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...payload, promptType: action }),
       });
 
       // Errors are returned as JSON `{ error }`; success is a text/plain stream.
@@ -61,34 +66,87 @@ export default function InsightsPanel({ payload }: Readonly<InsightsPanelProps>)
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setLoading(false);
+      setActiveAction(null);
     }
   };
 
+  const hasReleaseContext = Boolean(payload.context?.release);
+
   return (
-    <div className="rounded-lg border border-border p-6">
-      <div className="flex items-start justify-between gap-4 mb-4">
+    <div className="rounded-lg border border-border p-6 space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-semibold mb-1 flex items-center gap-2">
-            <Sparkles className="h-5 w-5" />
-            AI Insights
+          <h2 className="text-xl font-semibold flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-amber-400" />
+            Contextual AI Intelligence
           </h2>
-          <p className="text-sm text-muted-foreground">
-            Get an AI-generated summary of your traffic trends and growth tips.
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Interprets precomputed growth telemetry without hallucinating data.
           </p>
         </div>
-        <Button onClick={generate} disabled={loading} size="sm" className="gap-2 shrink-0">
-          {loading ? (
-            <>
-              <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />{" "}
-              Analyzing…
-            </>
-          ) : (
-            <>
-              <Sparkles className="h-4 w-4" />
-              Summarize my traffic
-            </>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            onClick={() => generate("growth")}
+            disabled={loading}
+            size="sm"
+            variant="outline"
+            className="gap-1.5 text-xs"
+          >
+            {loading && activeAction === "growth" ? (
+              <span className="w-3.5 h-3.5 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
+            ) : (
+              <TrendingUp className="h-3.5 w-3.5 text-amber-400" />
+            )}
+            Explain this growth
+          </Button>
+
+          {hasReleaseContext && (
+            <Button
+              onClick={() => generate("release")}
+              disabled={loading}
+              size="sm"
+              variant="outline"
+              className="gap-1.5 text-xs"
+            >
+              {loading && activeAction === "release" ? (
+                <span className="w-3.5 h-3.5 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
+              ) : (
+                <Tag className="h-3.5 w-3.5 text-cyan-400" />
+              )}
+              Explain this release period
+            </Button>
           )}
-        </Button>
+
+          <Button
+            onClick={() => generate("change")}
+            disabled={loading}
+            size="sm"
+            variant="outline"
+            className="gap-1.5 text-xs"
+          >
+            {loading && activeAction === "change" ? (
+              <span className="w-3.5 h-3.5 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
+            ) : (
+              <Activity className="h-3.5 w-3.5 text-emerald-400" />
+            )}
+            What changed?
+          </Button>
+
+          <Button
+            onClick={() => generate("traffic")}
+            disabled={loading}
+            size="sm"
+            className="gap-1.5 text-xs"
+          >
+            {loading && activeAction === "traffic" ? (
+              <span className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+            ) : (
+              <BarChart2 className="h-3.5 w-3.5" />
+            )}
+            Summarize my traffic
+          </Button>
+        </div>
       </div>
 
       {error && (
@@ -101,12 +159,14 @@ export default function InsightsPanel({ payload }: Readonly<InsightsPanelProps>)
       )}
 
       {summary && (
-        <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{summary}</div>
+        <div className="rounded-lg border border-border/60 bg-muted/20 p-4 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+          {summary}
+        </div>
       )}
 
       {!summary && !error && !loading && (
-        <p className="text-sm text-muted-foreground">
-          Click &ldquo;Summarize my traffic&rdquo; to generate insights from the last 14 days.
+        <p className="text-xs text-muted-foreground">
+          Select an action above to generate deterministic AI insights from observed telemetry.
         </p>
       )}
     </div>

@@ -62,4 +62,55 @@ describe("InsightsPanel", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/not configured/);
   });
+
+  it("sends promptType 'growth' when 'Explain this growth' is clicked", async () => {
+    let capturedBody: any;
+    server.use(
+      http.post("/api/insights", async ({ request }) => {
+        capturedBody = await request.json();
+        return new HttpResponse("Star velocity increased 40%.", {
+          headers: { "Content-Type": "text/plain; charset=utf-8" },
+        });
+      })
+    );
+    const user = userEvent.setup();
+
+    render(<InsightsPanel payload={payload} />);
+    await user.click(screen.getByRole("button", { name: /Explain this growth/i }));
+
+    expect(await screen.findByText("Star velocity increased 40%.")).toBeInTheDocument();
+    expect(capturedBody.promptType).toBe("growth");
+  });
+
+  it("renders and handles 'Explain this release period' when release context is present", async () => {
+    let capturedBody: any;
+    server.use(
+      http.post("/api/insights", async ({ request }) => {
+        capturedBody = await request.json();
+        return new HttpResponse("Growth accelerated around v1.0.0.", {
+          headers: { "Content-Type": "text/plain; charset=utf-8" },
+        });
+      })
+    );
+    const user = userEvent.setup();
+
+    const payloadWithRelease: AggregatedTrafficPayload = {
+      ...payload,
+      context: {
+        repoName: "test/repo",
+        release: {
+          tag: "v1.0.0",
+          daysAgo: 5,
+        },
+      },
+    };
+
+    render(<InsightsPanel payload={payloadWithRelease} />);
+    const releaseBtn = screen.getByRole("button", { name: /Explain this release period/i });
+    expect(releaseBtn).toBeInTheDocument();
+
+    await user.click(releaseBtn);
+    expect(await screen.findByText("Growth accelerated around v1.0.0.")).toBeInTheDocument();
+    expect(capturedBody.promptType).toBe("release");
+  });
 });

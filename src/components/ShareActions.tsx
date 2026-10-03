@@ -1,0 +1,104 @@
+// SPDX-License-Identifier: MIT
+"use client";
+
+import { useState } from "react";
+import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import { GROWTH_CARD_THEMES, type GrowthCardTheme } from "@/lib/growth-card";
+
+export default function ShareActions({ owner, repo }: { owner: string; repo: string }) {
+  const [theme, setTheme] = useState<GrowthCardTheme>("github-dark");
+  const [feedback, setFeedback] = useState("");
+  const path = `/repo/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
+  const cardPath = `/api/card/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}?theme=${theme}`;
+
+  async function copy(value: string, message: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setFeedback(message);
+    } catch {
+      setFeedback("Clipboard unavailable. Copy the page URL from your browser.");
+    }
+  }
+
+  async function share() {
+    const url = `${window.location.origin}${path}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: `${owner}/${repo} star growth`, url });
+        setFeedback("Report shared.");
+      } catch {
+        setFeedback("Share cancelled.");
+      }
+    } else {
+      await copy(url, "Report link copied.");
+    }
+  }
+
+  return (
+    <section
+      className="rounded-xl border border-border bg-card p-5 sm:p-6 space-y-4"
+      aria-labelledby="share-title"
+    >
+      <div>
+        <h2 id="share-title" className="font-semibold text-lg">
+          Share this growth report
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Add a live card to a README so readers can explore the public report.
+        </p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" onClick={share}>
+          Share
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => copy(`${window.location.origin}${path}`, "Report link copied.")}
+        >
+          Copy link
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() =>
+            copy(
+              `[![${owner}/${repo} growth](${window.location.origin}${cardPath})](${window.location.origin}${path})`,
+              "Markdown card copied."
+            )
+          }
+        >
+          Copy Markdown card
+        </Button>
+      </div>
+      <label className="flex items-center gap-3 text-sm" htmlFor="card-theme">
+        Card theme
+        <select
+          id="card-theme"
+          value={theme}
+          onChange={(event) => setTheme(event.target.value as GrowthCardTheme)}
+          className="rounded-md border border-border bg-background px-3 py-2"
+        >
+          {Object.keys(GROWTH_CARD_THEMES).map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      </label>
+      <Image
+        src={cardPath}
+        alt={`Growth card for ${owner}/${repo}`}
+        width={540}
+        height={176}
+        loading="eager"
+        unoptimized
+        className="w-full max-w-[540px] h-auto rounded-xl"
+      />
+      <p role="status" aria-live="polite" className="text-sm text-muted-foreground min-h-5">
+        {feedback}
+      </p>
+    </section>
+  );
+}

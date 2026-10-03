@@ -56,7 +56,32 @@ function objectArray<T extends z.ZodTypeAny>(item: T, cap?: number) {
   }, z.array(item));
 }
 
+const structuredContextSchema = z
+  .object({
+    repoName: z.string().optional(),
+    currentStars: safeNumber.optional(),
+    stars7d: safeNumber.optional(),
+    stars30d: safeNumber.optional(),
+    weeklyVelocityChange: z.number().nullable().optional(),
+    release: z
+      .object({
+        tag: z.string(),
+        name: z.string().optional(),
+        daysAgo: safeNumber,
+        beforeStars: safeNumber.optional(),
+        afterStars: safeNumber.optional(),
+        velocityChangePercent: z.number().nullable().optional(),
+      })
+      .nullable()
+      .optional(),
+  })
+  .optional();
+
+export type StructuredAnalyticsContext = z.infer<typeof structuredContextSchema>;
+
 const payloadSchema = z.object({
+  promptType: z.enum(["traffic", "growth", "release", "change"]).optional(),
+  context: structuredContextSchema,
   repoCount: safeNumber,
   totalViews: safeNumber,
   totalUniques: safeNumber,
@@ -82,7 +107,10 @@ export function parseTrafficPayload(body: unknown): AggregatedTrafficPayload {
 
   const payload = payloadSchema.parse(body);
   const hasNoTraffic =
-    payload.totalViews === 0 && payload.totalClones === 0 && payload.daily.length === 0;
+    payload.totalViews === 0 &&
+    payload.totalClones === 0 &&
+    payload.daily.length === 0 &&
+    !payload.context;
 
   if (hasNoTraffic) {
     throw new InvalidInsightsPayloadError(
@@ -98,6 +126,55 @@ export function parseTrafficPayload(body: unknown): AggregatedTrafficPayload {
  * Deterministic ordering keeps it cache-friendly and easy to assert in tests.
  */
 export function buildInsightsPrompt(payload: AggregatedTrafficPayload): string {
+  if (payload.promptType === "growth" && payload.context) {
+    const lines = [
+      `Analyze star growth trajectory for repository ${payload.context.repoName || "target"}:`,
+      `Current stars: ${payload.context.currentStars ?? payload.totalStars}`,
+      `7-day star growth: +${payload.context.stars7d ?? 0}`,
+      `30-day star growth: +${payload.context.stars30d ?? 0}`,
+      payload.context.weeklyVelocityChange !== undefined &&
+      payload.context.weeklyVelocityChange !== null
+        ? `Weekly velocity change: ${payload.context.weeklyVelocityChange}%`
+        : null,
+      "Explain what these star trajectory numbers indicate about repository momentum and growth drivers.",
+    ].filter(Boolean) as string[];
+    return lines.join("\n");
+  }
+
+  if (payload.promptType === "release" && payload.context?.release) {
+    const rel = payload.context.release;
+    const lines = [
+      `Analyze the release period for repository ${payload.context.repoName || "target"}:`,
+      `Release tag: ${rel.tag} (${rel.name || rel.tag})`,
+      `Published: ~${rel.daysAgo} days ago`,
+      rel.beforeStars !== undefined ? `14 days before release: +${rel.beforeStars} stars` : null,
+      rel.afterStars !== undefined ? `14 days after release: +${rel.afterStars} stars` : null,
+      rel.velocityChangePercent !== undefined && rel.velocityChangePercent !== null
+        ? `Velocity change around release: ${rel.velocityChangePercent}%`
+        : null,
+      "Explain the activity observed around this release window. Treat this strictly as temporal association, not direct causation.",
+    ].filter(Boolean) as string[];
+    return lines.join("\n");
+  }
+
+  if (payload.promptType === "change" && payload.context) {
+    const lines = [
+      `Summarize key recent growth and trajectory changes for repository ${payload.context.repoName || "target"}:`,
+      `Current stars: ${payload.context.currentStars ?? payload.totalStars}`,
+      `7-day gain: +${payload.context.stars7d ?? 0}`,
+      `30-day gain: +${payload.context.stars30d ?? 0}`,
+      payload.context.weeklyVelocityChange !== undefined &&
+      payload.context.weeklyVelocityChange !== null
+        ? `Velocity change: ${payload.context.weeklyVelocityChange}%`
+        : null,
+      payload.context.release
+        ? `Latest release: ${payload.context.release.tag} (${payload.context.release.daysAgo} days ago)`
+        : null,
+      "Highlight what changed in terms of velocity, momentum, and traffic patterns.",
+    ].filter(Boolean) as string[];
+    return lines.join("\n");
+  }
+
   const lines = [
     `Repositories analyzed: ${payload.repoCount}`,
     `Total views (14d): ${payload.totalViews} (${payload.totalUniques} unique visitors)`,
@@ -129,11 +206,10 @@ export function buildInsightsPrompt(payload: AggregatedTrafficPayload): string {
 
 export const INSIGHTS_SYSTEM_PROMPT = [
   "You are a growth analyst for open-source maintainers.",
-  "Given an aggregated 14-day GitHub traffic summary, write a concise, actionable briefing.",
-  "Structure your answer as 3-5 short bullet points covering: notable trends, the strongest",
-  "traffic sources, and one or two concrete suggestions to grow reach (docs, referrer outreach,",
-  "README badges, sharing on relevant communities). Be specific and reference the numbers.",
-  "Do not invent data that is not present. Keep it under 180 words. Plain text, no markdown headers.",
+  "Given structured precomputed GitHub growth and traffic metrics, write a concise, actionable briefing.",
+  "Do not invent or calculate numbers yourself. Explain the precomputed trends and offer concrete suggestions.",
+  "If analyzing release events, treat them as temporal associations rather than direct causation.",
+  "Structure your answer as 3-5 short bullet points. Keep it under 180 words. Plain text, no markdown headers.",
 ].join(" ");
 
 export const INSIGHTS_MODEL = "claude-haiku-4-5";
