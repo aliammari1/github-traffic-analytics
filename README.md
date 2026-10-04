@@ -147,6 +147,8 @@ Maintainers can also opt into weekly or monthly reports posted as a GitHub Issue
 
 Slack and Discord incoming webhook alerts can notify maintainers about observed star milestones, acceleration, slowdowns, referrer changes, and completed release windows. The webhook URL is encrypted before storage and alerts are sent only after an explicit opt-in.
 
+Prefer a self-hosted workflow? [GitHub Traffic Analytics Lite](docs/github-action.md) is a standalone Action that archives complete traffic days as JSON and CSV to a dedicated data branch, with no hosted database.
+
 ### 6. Contextual AI Actions (Explains Math, Never Hallucinates)
 
 No generic AI chatbots. Maintainers can trigger contextual briefings:

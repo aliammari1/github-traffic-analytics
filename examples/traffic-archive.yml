@@ -1,0 +1,24 @@
+# GitHub Traffic Analytics Lite — copy to .github/workflows/traffic-archive.yml
+# TRAFFIC_READ_TOKEN: fine-grained token or App installation token with
+# Administration: read on this repository. GITHUB_TOKEN cannot request it.
+name: Archive repository traffic
+on:
+  schedule:
+    - cron: "20 6 * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: traffic-archive
+  cancel-in-progress: false
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: aliammari1/github-traffic-analytics@main
+        with:
+          traffic_token: ${{ secrets.TRAFFIC_READ_TOKEN }}
+          github_token: ${{ github.token }}
+          branch: traffic-history
+          # Required when this repository is public: branch data is public.
+          allow_public_archive: "true"

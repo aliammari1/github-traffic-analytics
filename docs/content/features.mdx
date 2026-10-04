@@ -130,6 +130,15 @@ cover overlapping rolling 14-day windows and do not identify an external
 post as the cause of growth. Webhook URLs are encrypted in D1, never returned
 by the settings API, and can be tested or removed from the Insights tab.
 
+## Standalone GitHub Action
+
+GitHub Traffic Analytics Lite archives a repository's own completed daily
+traffic records into a dedicated branch as JSON and CSV, and writes a short
+Markdown summary. It does not require Cloudflare or the hosted dashboard.
+The workflow needs a separate token with GitHub Administration-read permission
+for traffic; the normal workflow token cannot request that permission. See
+the [setup guide](https://github.com/aliammari1/github-traffic-analytics/blob/main/docs/github-action.md).
+
 ## Traffic badge (the viral loop)
 
 Every tracked repo gets a public, embeddable SVG badge of its **total accumulated
