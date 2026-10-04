@@ -13,21 +13,24 @@ export function isValidTimeZone(zone: string): boolean {
 }
 
 /** An hourly UTC cron first attempts at local 09:00; 10–11 allow retries. */
-export function digestWindow(now: Date, timeZone: string) {
+export function reportWindow(now: Date, timeZone: string, cadence: "weekly" | "monthly") {
   if (!isValidTimeZone(timeZone) || !Number.isFinite(now.getTime()))
     throw new Error("Invalid digest schedule");
   const local = new Intl.DateTimeFormat("en-US", {
     timeZone,
     weekday: "long",
+    day: "numeric",
     hour: "2-digit",
     hourCycle: "h23",
   }).formatToParts(now);
   const localWeekday = local.find((part) => part.type === "weekday")?.value ?? "";
+  const localDay = Number(local.find((part) => part.type === "day")?.value);
   const hour = Number(local.find((part) => part.type === "hour")?.value);
+  const scheduledDay = cadence === "weekly" ? localWeekday === "Monday" : localDay === 1;
   // Anchor every retry to the first local 09:00 tick. In eastern timezones a
   // UTC date boundary can fall between the 09:00 and 11:00 attempts.
   let anchor = now;
-  if (localWeekday === "Monday" && hour >= 9 && hour <= 11) {
+  if (scheduledDay && hour >= 9 && hour <= 11) {
     for (let offset = 1; offset <= 2; offset++) {
       const candidate = new Date(now.getTime() - offset * 3_600_000);
       const candidateParts = new Intl.DateTimeFormat("en-US", {
@@ -41,5 +44,9 @@ export function digestWindow(now: Date, timeZone: string) {
   }
   const utcToday = Date.UTC(anchor.getUTCFullYear(), anchor.getUTCMonth(), anchor.getUTCDate());
   const endingOn = new Date(utcToday - DAY_MS).toISOString().slice(0, 10);
-  return { endingOn, localWeekday, isDue: localWeekday === "Monday" && hour >= 9 && hour <= 11 };
+  return { endingOn, localWeekday, isDue: scheduledDay && hour >= 9 && hour <= 11 };
+}
+
+export function digestWindow(now: Date, timeZone: string) {
+  return reportWindow(now, timeZone, "weekly");
 }

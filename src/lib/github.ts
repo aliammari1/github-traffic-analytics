@@ -47,6 +47,20 @@ export interface Repository {
   };
 }
 
+function isRateLimit(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const candidate = error as {
+    response?: { headers?: Record<string, string> };
+    message?: string;
+  };
+  const headers = candidate.response?.headers;
+  return (
+    headers?.["x-ratelimit-remaining"] === "0" ||
+    Boolean(headers?.["retry-after"]) ||
+    /rate limit/i.test(candidate.message ?? "")
+  );
+}
+
 export class GitHubService {
   private octokit: Octokit;
 
@@ -65,7 +79,9 @@ export class GitHubService {
       });
       return data;
     } catch (error) {
-      console.error("Error fetching repositories:", error);
+      console.error("GitHub repository listing failed", {
+        status: error && typeof error === "object" && "status" in error ? error.status : "unknown",
+      });
       throw error;
     }
   }
@@ -79,8 +95,16 @@ export class GitHubService {
       });
       return data;
     } catch (error: unknown) {
-      console.error(`Error fetching traffic data for ${owner}/${repo}:`, error);
-      if (error instanceof Error && "status" in error && error.status === 403) {
+      console.error("GitHub traffic request failed", {
+        repository: `${owner}/${repo}`,
+        status: error && typeof error === "object" && "status" in error ? error.status : "unknown",
+      });
+      if (
+        error instanceof Error &&
+        "status" in error &&
+        error.status === 403 &&
+        !isRateLimit(error)
+      ) {
         throw new TrafficAccessError();
       }
       throw error;
@@ -96,8 +120,16 @@ export class GitHubService {
       });
       return data;
     } catch (error: unknown) {
-      console.error(`Error fetching clone data for ${owner}/${repo}:`, error);
-      if (error instanceof Error && "status" in error && error.status === 403) {
+      console.error("GitHub clone request failed", {
+        repository: `${owner}/${repo}`,
+        status: error && typeof error === "object" && "status" in error ? error.status : "unknown",
+      });
+      if (
+        error instanceof Error &&
+        "status" in error &&
+        error.status === 403 &&
+        !isRateLimit(error)
+      ) {
         throw new TrafficAccessError();
       }
       throw error;
@@ -112,8 +144,16 @@ export class GitHubService {
       });
       return data;
     } catch (error: unknown) {
-      console.error(`Error fetching referrer data for ${owner}/${repo}:`, error);
-      if (error instanceof Error && "status" in error && error.status === 403) {
+      console.error("GitHub referrer request failed", {
+        repository: `${owner}/${repo}`,
+        status: error && typeof error === "object" && "status" in error ? error.status : "unknown",
+      });
+      if (
+        error instanceof Error &&
+        "status" in error &&
+        error.status === 403 &&
+        !isRateLimit(error)
+      ) {
         throw new TrafficAccessError();
       }
       throw error;
@@ -128,8 +168,16 @@ export class GitHubService {
       });
       return data;
     } catch (error: unknown) {
-      console.error(`Error fetching popular paths for ${owner}/${repo}:`, error);
-      if (error instanceof Error && "status" in error && error.status === 403) {
+      console.error("GitHub popular-path request failed", {
+        repository: `${owner}/${repo}`,
+        status: error && typeof error === "object" && "status" in error ? error.status : "unknown",
+      });
+      if (
+        error instanceof Error &&
+        "status" in error &&
+        error.status === 403 &&
+        !isRateLimit(error)
+      ) {
         throw new TrafficAccessError();
       }
       throw error;

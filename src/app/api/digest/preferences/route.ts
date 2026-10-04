@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { parseRepoInput } from "@/lib/analytics";
 import { getServerAuth } from "@/lib/server-auth";
 import { getD1 } from "@/lib/d1";
-import { GitHubService } from "@/lib/github";
+import { GitHubService, TrafficAccessError } from "@/lib/github";
 import { isValidTimeZone } from "@/lib/digest-schedule";
 
 const reply = (body: Record<string, unknown>, status = 200) =>
@@ -75,7 +75,7 @@ export async function PUT(request: NextRequest) {
   } catch (cause) {
     const status =
       cause && typeof cause === "object" && "status" in cause ? Number(cause.status) : 0;
-    return status === 403 || status === 404
+    return cause instanceof TrafficAccessError || status === 404
       ? reply({ error: "GitHub no longer grants you traffic access to this repository." }, 403)
       : reply({ error: "Could not verify GitHub traffic access. Try again shortly." }, 502);
   }

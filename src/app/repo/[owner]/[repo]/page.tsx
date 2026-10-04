@@ -33,6 +33,7 @@ import HistoricalTraffic from "@/components/HistoricalTraffic";
 import InsightsPanel from "@/components/InsightsPanel";
 import WeeklyReportPreview from "@/components/WeeklyReportPreview";
 import WeeklyDigestSettings from "@/components/WeeklyDigestSettings";
+import GitHubReportSettings from "@/components/GitHubReportSettings";
 import AnomalyList from "@/components/AnomalyList";
 import type { PublicRepoAnalysis } from "@/lib/github-public";
 import { calculateReleaseImpact } from "@/lib/analytics";
@@ -989,6 +990,7 @@ export default function RepositoryAnalyticsPage({
             <>
               <WeeklyReportPreview owner={owner} repo={repo} />
               <WeeklyDigestSettings owner={owner} repo={repo} />
+              <GitHubReportSettings owner={owner} repo={repo} />
               <InsightsPanel
                 payload={{
                   repoCount: 1,

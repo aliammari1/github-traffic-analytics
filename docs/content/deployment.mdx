@@ -57,6 +57,7 @@ Existing deployments can apply the additive migration before deploying:
 
 ```bash
 wrangler d1 execute traffic_analytics --remote --file db/migrations/0002_weekly_digest.sql
+wrangler d1 execute traffic_analytics --remote --file db/migrations/0003_github_reports.sql
 ```
 
 Verify a sender domain with Resend, then set these secrets on the **snapshot

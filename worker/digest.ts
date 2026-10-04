@@ -28,7 +28,9 @@ interface Preference {
 
 const DAY_MS = 86_400_000;
 
-async function verifyTrafficAccess(pref: Preference): Promise<boolean> {
+export async function verifyTrafficAccess(
+  pref: Pick<Preference, "repo_owner" | "repo_name" | "access_token">
+): Promise<boolean> {
   const response = await fetch(
     `https://api.github.com/repos/${encodeURIComponent(pref.repo_owner)}/${encodeURIComponent(pref.repo_name)}/traffic/views?per=day`,
     {

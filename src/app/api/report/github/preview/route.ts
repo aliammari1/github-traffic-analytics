@@ -3,46 +3,45 @@ import { NextRequest, NextResponse } from "next/server";
 import { parseRepoInput } from "@/lib/analytics";
 import { getServerAuth } from "@/lib/server-auth";
 import { GitHubService, TrafficAccessError } from "@/lib/github";
-import { publicGitHub } from "@/lib/github-public";
 import { getD1 } from "@/lib/d1";
 import { getHistory } from "@/lib/snapshots";
-import { buildWeeklyReport } from "@/lib/weekly-report";
 import { getSourceWindows } from "@/lib/source-snapshots";
+import { publicGitHub } from "@/lib/github-public";
+import { buildMonthlyReport, buildWeeklyReport } from "@/lib/weekly-report";
+import { formatGitHubReport } from "@/lib/github-report-delivery";
 
-const DAY_MS = 86_400_000;
-const error = (message: string, status: number) =>
-  NextResponse.json(
-    { error: message },
-    { status, headers: { "cache-control": "private, no-store" } }
-  );
+const reply = (body: Record<string, unknown>, status = 200) =>
+  NextResponse.json(body, { status, headers: { "cache-control": "private, no-store" } });
 
-/** Owner-only preview of the latest seven complete UTC days. */
 export async function GET(request: NextRequest) {
   const identity = await getServerAuth(request);
-  if (!identity) return error("Sign in to view your weekly report.", 401);
+  if (!identity) return reply({ error: "Sign in to preview a GitHub report." }, 401);
   const owner = request.nextUrl.searchParams.get("owner") ?? "";
   const repo = request.nextUrl.searchParams.get("repo") ?? "";
+  const cadence = request.nextUrl.searchParams.get("cadence");
   const parsed = parseRepoInput(`${owner}/${repo}`);
-  if (!parsed || parsed.owner !== owner || parsed.repo !== repo)
-    return error("Choose a valid repository.", 400);
-
+  if (
+    !parsed ||
+    parsed.owner !== owner ||
+    parsed.repo !== repo ||
+    (cadence !== "weekly" && cadence !== "monthly")
+  )
+    return reply({ error: "Choose a valid repository and report frequency." }, 400);
   try {
     await new GitHubService(identity.accessToken).getTrafficViews(owner, repo);
   } catch (cause) {
-    const status =
-      cause && typeof cause === "object" && "status" in cause ? Number(cause.status) : 0;
-    return cause instanceof TrafficAccessError || status === 404
-      ? error("GitHub no longer grants you traffic access to this repository.", 403)
-      : error("GitHub could not verify repository access. Try again shortly.", 502);
+    return cause instanceof TrafficAccessError
+      ? reply({ error: "GitHub does not grant you traffic access to this repository." }, 403)
+      : reply({ error: "GitHub could not verify your traffic access. Try again shortly." }, 502);
   }
-
   const db = await getD1();
-  if (!db) return error("Weekly reports require the Cloudflare D1 deployment.", 503);
-  const end =
+  if (!db) return reply({ error: "GitHub reports require Cloudflare D1." }, 503);
+  const endMs =
     Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate()) -
-    DAY_MS;
-  const endingOn = new Date(end).toISOString().slice(0, 10);
-  const fromDay = new Date(end - 13 * DAY_MS).toISOString().slice(0, 10);
+    86_400_000;
+  const endingOn = new Date(endMs).toISOString().slice(0, 10);
+  const days = cadence === "monthly" ? 60 : 14;
+  const fromDay = new Date(endMs - (days - 1) * 86_400_000).toISOString().slice(0, 10);
   try {
     const [snapshots, sources, analysis] = await Promise.all([
       getHistory(db, {
@@ -60,7 +59,7 @@ export async function GET(request: NextRequest) {
       }).catch(() => null),
       publicGitHub.analyzePublicRepository(owner, repo).catch(() => null),
     ]);
-    const report = buildWeeklyReport({
+    const report = (cadence === "weekly" ? buildWeeklyReport : buildMonthlyReport)({
       fullName: `${owner}/${repo}`,
       endingOn,
       snapshots,
@@ -70,8 +69,14 @@ export async function GET(request: NextRequest) {
       referrers: sources?.referrers,
       paths: sources?.paths,
     });
-    return NextResponse.json(report, { headers: { "cache-control": "private, no-store" } });
+    return reply({
+      markdown: formatGitHubReport(
+        report,
+        process.env.NEXT_PUBLIC_APP_URL ?? "https://github-traffic-analytics.ali-ammari.workers.dev"
+      ),
+      endingOn,
+    });
   } catch {
-    return error("Report data is temporarily unavailable. Try again shortly.", 503);
+    return reply({ error: "Could not build the report preview. Try again shortly." }, 503);
   }
 }

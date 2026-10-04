@@ -141,6 +141,8 @@ GitHub's traffic API returns a recent 14-day window. After a maintainer enables 
 
 Owners can preview a deterministic weekly report, export their stored traffic as CSV or JSON, and opt into a Monday email to their verified primary GitHub address when the deployment has email delivery configured. Missing days remain unavailable rather than appearing as zero.
 
+Maintainers can also opt into weekly or monthly reports posted as a GitHub Issue or Discussion. They choose the Discussion category when applicable. On public repositories, those posts expose the included traffic counts, so this delivery is always an explicit opt-in.
+
 ### 6. Contextual AI Actions (Explains Math, Never Hallucinates)
 
 No generic AI chatbots. Maintainers can trigger contextual briefings:

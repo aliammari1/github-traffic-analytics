@@ -15,6 +15,7 @@
 import * as Sentry from "@sentry/cloudflare";
 import { upsertDailyCounts, toDayKey, type D1Database, type Metric } from "../src/lib/snapshots";
 import { runWeeklyDigests, type DigestEnv } from "./digest";
+import { runGitHubReports } from "./github-reports";
 import { replaceSourceSnapshot } from "../src/lib/source-snapshots";
 
 export interface Env extends DigestEnv {
@@ -158,15 +159,28 @@ const handler = {
   ) {
     if (event.cron === "0 * * * *") {
       ctx.waitUntil(
-        runWeeklyDigests(env, new Date(event.scheduledTime))
-          .then((result) => {
+        Promise.allSettled([
+          runWeeklyDigests(env, new Date(event.scheduledTime)),
+          runGitHubReports(env, new Date(event.scheduledTime)),
+        ])
+          .then(([email, github]) => {
+            if (email.status === "rejected") throw email.reason;
+            if (github.status === "rejected") throw github.reason;
+            const result = email.value;
             console.log(
               `Weekly digest run: ${result.due} due, ${result.sent} sent, ${result.failed} failed, ${result.revoked} access revoked`
             );
-            if (result.failed) throw new Error(`${result.failed} weekly digests failed`);
+            const reports = github.value;
+            console.log(
+              `GitHub report run: ${reports.due} due, ${reports.sent} sent, ${reports.failed} failed, ${reports.revoked} access revoked`
+            );
+            if (result.failed || reports.failed)
+              throw new Error(
+                `${result.failed} emails and ${reports.failed} GitHub reports failed`
+              );
           })
           .catch((error) => {
-            Sentry.captureException(error, { tags: { job: "weekly-digest" } });
+            Sentry.captureException(error, { tags: { job: "scheduled-reports" } });
             throw error;
           })
       );
