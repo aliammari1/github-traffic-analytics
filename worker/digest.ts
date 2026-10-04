@@ -9,9 +9,12 @@ import {
   type ReportDeliveryProvider,
   type EmailDestination,
 } from "../src/lib/report-delivery";
+import { RepositoryTokenProvider } from "./repository-token";
 
 export interface DigestEnv {
   DB: D1Database;
+  GITHUB_APP_ID?: string;
+  GITHUB_APP_PRIVATE_KEY?: string;
   RESEND_API_KEY?: string;
   REPORT_FROM_EMAIL?: string;
   SITE_URL?: string;
@@ -23,14 +26,18 @@ interface Preference {
   repo_name: string;
   recipient_email: string;
   time_zone: string;
-  access_token: string;
+  access_token: string | null;
+  installation_id: number | null;
+  repository_id: number | null;
 }
 
 const DAY_MS = 86_400_000;
 
-export async function verifyTrafficAccess(
-  pref: Pick<Preference, "repo_owner" | "repo_name" | "access_token">
-): Promise<boolean> {
+export async function verifyTrafficAccess(pref: {
+  repo_owner: string;
+  repo_name: string;
+  access_token: string;
+}): Promise<boolean> {
   const response = await fetch(
     `https://api.github.com/repos/${encodeURIComponent(pref.repo_owner)}/${encodeURIComponent(pref.repo_name)}/traffic/views?per=day`,
     {
@@ -55,16 +62,24 @@ export async function runWeeklyDigests(
   env: DigestEnv,
   now = new Date(),
   provider?: ReportDeliveryProvider<EmailDestination>,
-  verifyAccess: (pref: Preference) => Promise<boolean> = verifyTrafficAccess
+  verifyAccess: (
+    pref: Preference & { access_token: string }
+  ) => Promise<boolean> = verifyTrafficAccess
 ): Promise<{ due: number; sent: number; failed: number; revoked: number }> {
   const { results: preferences } = await env.DB.prepare(
     `SELECT p.owner_login, p.repo_owner, p.repo_name, p.recipient_email, p.time_zone,
-            t.access_token
+            t.access_token,
+            CASE WHEN i.active = 1 THEN a.installation_id END AS installation_id,
+            CASE WHEN i.active = 1 THEN a.repository_id END AS repository_id
        FROM weekly_digest_preferences p
-       JOIN tracked_repos t ON t.owner_login = p.owner_login
+       LEFT JOIN tracked_repos t ON t.owner_login = p.owner_login
          AND t.repo_owner = p.repo_owner AND t.repo_name = p.repo_name
-      WHERE p.enabled = 1`
+       LEFT JOIN app_tracked_repos a ON a.owner_login = p.owner_login
+         AND a.repo_owner = p.repo_owner AND a.repo_name = p.repo_name
+       LEFT JOIN github_app_installations i ON i.installation_id = a.installation_id
+      WHERE p.enabled = 1 AND (t.id IS NOT NULL OR (a.repository_id IS NOT NULL AND i.active = 1))`
   ).all<Preference>();
+  const tokens = new RepositoryTokenProvider(env);
   let due = 0;
   let sent = 0;
   let failed = 0;
@@ -97,7 +112,8 @@ export async function runWeeklyDigests(
     if (!deliveryId) continue;
 
     try {
-      if (!(await verifyAccess(pref))) {
+      const accessToken = await tokens.get(pref);
+      if (!(await verifyAccess({ ...pref, access_token: accessToken }))) {
         await env.DB.prepare(
           `DELETE FROM weekly_digest_preferences
              WHERE owner_login = ? AND repo_owner = ? AND repo_name = ?`
@@ -128,7 +144,7 @@ export async function runWeeklyDigests(
           repoName: pref.repo_name,
           endingOn: window.endingOn,
         }).catch(() => null),
-        new PublicGitHubService({ token: pref.access_token })
+        new PublicGitHubService({ token: accessToken })
           .analyzePublicRepository(pref.repo_owner, pref.repo_name)
           .catch(() => null),
       ]);

@@ -38,6 +38,13 @@ and popular content paths. Requires `ANTHROPIC_API_KEY`; degrades gracefully (HT
 
 ## Daily snapshots (beyond GitHub's 14-day window)
 
+Maintainers can install the GitHub App, select repositories, and start daily
+tracking without a separate “Track this repo” step. The App uses short-lived
+installation tokens scoped to selected repositories. GitHub requires the App's
+Administration-read permission for traffic endpoints; optional Issue and
+Discussion report posting uses their respective write permissions. Existing
+manual OAuth tracking remains available for deployments without the App.
+
 GitHub only serves the last 14 days of traffic. A Cloudflare **Cron Worker**
 runs daily, reads the repos you've opted in to track, fetches their traffic, and
 upserts one row per day/metric into a **D1** database. The dashboard's

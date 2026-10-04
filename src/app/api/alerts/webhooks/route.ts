@@ -110,26 +110,31 @@ export async function PUT(request: NextRequest) {
           webhookContext(identity.userId, owner, repo, destination)
         )
       : existing.results[0].url_ciphertext;
-    await db.batch([
-      db
-        .prepare(
-          `INSERT INTO tracked_repos (owner_login, repo_owner, repo_name, access_token)
+    const { results: installed } = await db
+      .prepare(
+        `SELECT 1 FROM app_tracked_repos WHERE owner_login = ? AND repo_owner = ? AND repo_name = ? LIMIT 1`
+      )
+      .bind(identity.userId, owner, repo)
+      .all<{ "1": number }>();
+    const tracking = db
+      .prepare(
+        `INSERT INTO tracked_repos (owner_login, repo_owner, repo_name, access_token)
            VALUES (?, ?, ?, ?)
            ON CONFLICT (owner_login, repo_owner, repo_name)
            DO UPDATE SET access_token = excluded.access_token`
-        )
-        .bind(identity.userId, owner, repo, identity.accessToken),
-      db
-        .prepare(
-          `INSERT INTO webhook_preferences
+      )
+      .bind(identity.userId, owner, repo, identity.accessToken);
+    const preference = db
+      .prepare(
+        `INSERT INTO webhook_preferences
              (owner_login, repo_owner, repo_name, platform, url_ciphertext, event_types)
            VALUES (?, ?, ?, ?, ?, ?)
            ON CONFLICT (owner_login, repo_owner, repo_name, platform)
            DO UPDATE SET url_ciphertext = excluded.url_ciphertext,
              event_types = excluded.event_types, enabled = 1, updated_at = datetime('now')`
-        )
-        .bind(identity.userId, owner, repo, destination, ciphertext, JSON.stringify(events)),
-    ]);
+      )
+      .bind(identity.userId, owner, repo, destination, ciphertext, JSON.stringify(events));
+    await db.batch(installed.length ? [preference] : [tracking, preference]);
     return reply({ platform: destination, configured: true, events });
   } catch {
     return reply({ error: "Could not save the webhook. Check encryption setup and retry." }, 503);

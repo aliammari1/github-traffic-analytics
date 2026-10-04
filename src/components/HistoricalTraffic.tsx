@@ -39,6 +39,7 @@ export default function HistoricalTraffic({ owner, repo }: HistoricalTrafficProp
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [tracking, setTracking] = useState(false);
+  const [trackingSource, setTrackingSource] = useState<"app" | "oauth" | "none">("none");
   const [exporting, setExporting] = useState<"csv" | "json" | null>(null);
   const [exportMessage, setExportMessage] = useState("");
 
@@ -54,6 +55,7 @@ export default function HistoricalTraffic({ owner, repo }: HistoricalTrafficProp
         return;
       }
       setHistory(data.history ?? []);
+      setTrackingSource(data.trackingSource ?? "none");
     } catch {
       setMessage("Unable to load history");
     } finally {
@@ -80,6 +82,7 @@ export default function HistoricalTraffic({ owner, repo }: HistoricalTrafficProp
           ? "Tracking enabled. Daily snapshots will accumulate from tomorrow."
           : data.error || "Unable to enable tracking"
       );
+      if (res.ok) setTrackingSource("oauth");
     } catch {
       setMessage("Unable to enable tracking");
     } finally {
@@ -147,15 +150,25 @@ export default function HistoricalTraffic({ owner, repo }: HistoricalTrafficProp
               {exporting === format ? "Preparing…" : `Export ${format.toUpperCase()}`}
             </Button>
           ))}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={enableTracking}
-            disabled={tracking}
-            className="shrink-0"
-          >
-            {tracking ? "Enabling…" : "Track this repo"}
-          </Button>
+          {trackingSource === "app" ? (
+            <span className="self-center text-xs text-muted-foreground">
+              GitHub App tracking enabled
+            </span>
+          ) : trackingSource === "oauth" ? (
+            <span className="self-center text-xs text-muted-foreground">
+              Daily tracking enabled
+            </span>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={enableTracking}
+              disabled={tracking}
+              className="shrink-0"
+            >
+              {tracking ? "Enabling…" : "Track this repo"}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -198,7 +211,9 @@ export default function HistoricalTraffic({ owner, repo }: HistoricalTrafficProp
       ) : (
         <div className="h-24 flex items-center justify-center text-center text-sm text-muted-foreground">
           {message ||
-            "No historical data yet. Enable tracking to start collecting daily snapshots."}
+            (trackingSource === "none"
+              ? "No historical data yet. Enable tracking to start collecting daily snapshots."
+              : "Tracking is enabled. The first daily capture will appear here after the next run.")}
         </div>
       )}
 

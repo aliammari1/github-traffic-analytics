@@ -119,35 +119,40 @@ export async function PUT(request: NextRequest) {
   }
 
   try {
-    await db.batch([
-      db
-        .prepare(
-          `INSERT INTO tracked_repos (owner_login, repo_owner, repo_name, access_token)
+    const { results: installed } = await db
+      .prepare(
+        `SELECT 1 FROM app_tracked_repos WHERE owner_login = ? AND repo_owner = ? AND repo_name = ? LIMIT 1`
+      )
+      .bind(identity.userId, repo.owner, repo.repo)
+      .all<{ "1": number }>();
+    const tracking = db
+      .prepare(
+        `INSERT INTO tracked_repos (owner_login, repo_owner, repo_name, access_token)
            VALUES (?, ?, ?, ?)
            ON CONFLICT (owner_login, repo_owner, repo_name)
            DO UPDATE SET access_token = excluded.access_token`
-        )
-        .bind(identity.userId, repo.owner, repo.repo, identity.accessToken),
-      db
-        .prepare(
-          `INSERT INTO github_report_preferences
+      )
+      .bind(identity.userId, repo.owner, repo.repo, identity.accessToken);
+    const preference = db
+      .prepare(
+        `INSERT INTO github_report_preferences
              (owner_login, repo_owner, repo_name, cadence, destination, discussion_category_id, time_zone)
            VALUES (?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT (owner_login, repo_owner, repo_name)
            DO UPDATE SET cadence = excluded.cadence, destination = excluded.destination,
              discussion_category_id = excluded.discussion_category_id,
              time_zone = excluded.time_zone, updated_at = datetime('now')`
-        )
-        .bind(
-          identity.userId,
-          repo.owner,
-          repo.repo,
-          cadence,
-          destination,
-          destination === "discussion" ? categoryId : null,
-          timeZone
-        ),
-    ]);
+      )
+      .bind(
+        identity.userId,
+        repo.owner,
+        repo.repo,
+        cadence,
+        destination,
+        destination === "discussion" ? categoryId : null,
+        timeZone
+      );
+    await db.batch(installed.length ? [preference] : [tracking, preference]);
     return reply({ enabled: true, cadence, destination, categoryId, timeZone });
   } catch {
     return reply({ error: "Could not save GitHub report settings. Try again shortly." }, 503);

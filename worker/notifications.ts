@@ -16,6 +16,7 @@ import {
   type WebhookPlatform,
 } from "../src/lib/webhook-secrets";
 import { verifyTrafficAccess } from "./digest";
+import { RepositoryTokenProvider } from "./repository-token";
 
 interface Preference {
   owner_login: string;
@@ -24,7 +25,9 @@ interface Preference {
   platform: WebhookPlatform;
   url_ciphertext: string;
   event_types: string;
-  access_token: string;
+  access_token: string | null;
+  installation_id: number | null;
+  repository_id: number | null;
 }
 
 interface DeliveryRow {
@@ -37,6 +40,8 @@ export interface NotificationEnv {
   DB: D1Database;
   WEBHOOK_ENCRYPTION_KEY?: string;
   SITE_URL?: string;
+  GITHUB_APP_ID?: string;
+  GITHUB_APP_PRIVATE_KEY?: string;
 }
 
 async function claim(db: D1Database, pref: Preference, alert: GrowthAlert): Promise<number | null> {
@@ -128,12 +133,18 @@ export async function runNotifications(
   if (!env.WEBHOOK_ENCRYPTION_KEY) throw new Error("Webhook encryption key is not configured");
   const { results: preferences } = await env.DB.prepare(
     `SELECT p.owner_login, p.repo_owner, p.repo_name, p.platform,
-            p.url_ciphertext, p.event_types, t.access_token
+            p.url_ciphertext, p.event_types, t.access_token,
+            CASE WHEN i.active = 1 THEN a.installation_id END AS installation_id,
+            CASE WHEN i.active = 1 THEN a.repository_id END AS repository_id
        FROM webhook_preferences p
-       JOIN tracked_repos t ON t.owner_login = p.owner_login
+       LEFT JOIN tracked_repos t ON t.owner_login = p.owner_login
          AND t.repo_owner = p.repo_owner AND t.repo_name = p.repo_name
-      WHERE p.enabled = 1`
+       LEFT JOIN app_tracked_repos a ON a.owner_login = p.owner_login
+         AND a.repo_owner = p.repo_owner AND a.repo_name = p.repo_name
+       LEFT JOIN github_app_installations i ON i.installation_id = a.installation_id
+      WHERE p.enabled = 1 AND (t.id IS NOT NULL OR (a.repository_id IS NOT NULL AND i.active = 1))`
   ).all<Preference>();
+  const tokens = new RepositoryTokenProvider(env);
   const groups = new Map<string, Preference[]>();
   for (const pref of preferences) {
     const key = [pref.owner_login, pref.repo_owner, pref.repo_name].join("\0");
@@ -150,7 +161,8 @@ export async function runNotifications(
   for (const prefs of groups.values()) {
     const first = prefs[0];
     try {
-      if (!(await verifyTrafficAccess(first))) {
+      const accessToken = await tokens.get(first);
+      if (!(await verifyTrafficAccess({ ...first, access_token: accessToken }))) {
         await env.DB.prepare(
           `DELETE FROM webhook_preferences
            WHERE owner_login = ? AND repo_owner = ? AND repo_name = ?`
@@ -168,7 +180,7 @@ export async function runNotifications(
           }
         })
       );
-      const service = new PublicGitHubService({ token: first.access_token });
+      const service = new PublicGitHubService({ token: accessToken });
       const metadata = await service.getRepositoryMetadata(first.repo_owner, first.repo_name);
       await env.DB.prepare(
         `INSERT INTO repo_star_snapshots (owner_login, repo_owner, repo_name, day, stars)
@@ -178,10 +190,10 @@ export async function runNotifications(
       )
         .bind(first.owner_login, first.repo_owner, first.repo_name, day, metadata.starsCount)
         .run();
-      const fromDay = new Date(Date.parse(`${day}T00:00:00Z`) - 14 * 86_400_000)
+      const fromDay = new Date(Date.parse(`${day}T00:00:00Z`) - 35 * 86_400_000)
         .toISOString()
         .slice(0, 10);
-      const [history, sources, analysis] = await Promise.all([
+      const [history, sources, analysis, appReleases] = await Promise.all([
         env.DB.prepare(
           `SELECT day, stars AS count FROM repo_star_snapshots
            WHERE owner_login = ? AND repo_owner = ? AND repo_name = ?
@@ -200,14 +212,33 @@ export async function runNotifications(
         selected.has("release_impact")
           ? service.analyzePublicRepository(first.repo_owner, first.repo_name).catch(() => null)
           : Promise.resolve(null),
+        selected.has("release_impact") && first.repository_id
+          ? env.DB.prepare(
+              `SELECT tag_name, published_at FROM app_release_events
+               WHERE repository_id = ? AND published_at >= ?`
+            )
+              .bind(first.repository_id, fromDay)
+              .all<{ tag_name: string; published_at: string }>()
+              .then((value) => value.results)
+              .catch(() => [])
+          : Promise.resolve([]),
       ]);
+      const releaseMap = new Map<string, { tagName: string; publishedAt: string }>();
+      for (const release of analysis?.releases ?? []) releaseMap.set(release.tagName, release);
+      for (const release of appReleases)
+        releaseMap.set(release.tag_name, {
+          tagName: release.tag_name,
+          publishedAt: release.published_at,
+        });
       const alerts = detectAlerts({
         fullName: `${first.repo_owner}/${first.repo_name}`,
         day,
         stars: history.results,
         referrers: sources?.referrers,
-        releases: analysis?.releases,
-        starHistory: analysis?.starHistory,
+        releases: [...releaseMap.values()],
+        starHistory: analysis?.starHistory.length
+          ? analysis.starHistory
+          : history.results.map((point) => ({ date: point.day, stars: point.count })),
         siteUrl: env.SITE_URL ?? "https://github-traffic-analytics.ali-ammari.workers.dev",
       });
       for (const pref of prefs) {

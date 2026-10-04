@@ -124,7 +124,13 @@ export async function PUT(request: NextRequest) {
                        updated_at = datetime('now')`
       )
       .bind(identity.userId, target.owner, target.repo, recipientEmail, timeZone);
-    await db.batch([tracking, preference]);
+    const { results: installed } = await db
+      .prepare(
+        `SELECT 1 FROM app_tracked_repos WHERE owner_login = ? AND repo_owner = ? AND repo_name = ? LIMIT 1`
+      )
+      .bind(identity.userId, target.owner, target.repo)
+      .all<{ "1": number }>();
+    await db.batch(installed.length ? [preference] : [tracking, preference]);
     return reply({ available: true, enabled: true, recipientEmail, timeZone });
   } catch {
     return reply({ error: "Could not save weekly email. Try again shortly." }, 503);

@@ -17,22 +17,18 @@ import { upsertDailyCounts, toDayKey, type D1Database, type Metric } from "../sr
 import { runWeeklyDigests, type DigestEnv } from "./digest";
 import { runGitHubReports } from "./github-reports";
 import { runNotifications } from "./notifications";
+import { listTrackedRepositories, RepositoryTokenProvider } from "./repository-token";
 import { replaceSourceSnapshot } from "../src/lib/source-snapshots";
 
 export interface Env extends DigestEnv {
   DB: D1Database;
   WEBHOOK_ENCRYPTION_KEY?: string;
+  GITHUB_APP_ID?: string;
+  GITHUB_APP_PRIVATE_KEY?: string;
   /** Optional Sentry DSN — when set, snapshot-cron failures are reported + alerted. */
   SENTRY_DSN?: string;
   /** Cloudflare deploy environment label for Sentry (e.g. "production"). */
   SENTRY_ENVIRONMENT?: string;
-}
-
-interface TrackedRepo {
-  owner_login: string;
-  repo_owner: string;
-  repo_name: string;
-  access_token: string;
 }
 
 interface GitHubTrafficResponse {
@@ -110,15 +106,23 @@ export async function runSnapshots(
   env: Env,
   now = new Date()
 ): Promise<{ repos: number; rows: number; sources: number }> {
-  const { results } = await env.DB.prepare(
-    `SELECT owner_login, repo_owner, repo_name, access_token FROM tracked_repos`
-  ).all<TrackedRepo>();
+  const results = await listTrackedRepositories(env.DB);
+  const tokens = new RepositoryTokenProvider(env);
 
   let rows = 0;
   let sources = 0;
   for (const repo of results) {
+    let accessToken: string;
+    try {
+      accessToken = await tokens.get(repo);
+    } catch {
+      console.error("Snapshot authorization unavailable", {
+        repository: `${repo.repo_owner}/${repo.repo_name}`,
+      });
+      continue;
+    }
     for (const metric of ["views", "clones"] as Metric[]) {
-      const data = await fetchTraffic(repo.access_token, repo.repo_owner, repo.repo_name, metric);
+      const data = await fetchTraffic(accessToken, repo.repo_owner, repo.repo_name, metric);
       if (!data) continue;
 
       const series = metric === "views" ? data.views : data.clones;
@@ -137,7 +141,7 @@ export async function runSnapshots(
       });
     }
     for (const kind of ["referrer", "path"] as const) {
-      const observed = await fetchSources(repo.access_token, repo.repo_owner, repo.repo_name, kind);
+      const observed = await fetchSources(accessToken, repo.repo_owner, repo.repo_name, kind);
       if (!observed) continue;
       await replaceSourceSnapshot(env.DB, {
         ownerLogin: repo.owner_login,

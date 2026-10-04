@@ -59,6 +59,7 @@ Existing deployments can apply the additive migration before deploying:
 wrangler d1 execute traffic_analytics --remote --file db/migrations/0002_weekly_digest.sql
 wrangler d1 execute traffic_analytics --remote --file db/migrations/0003_github_reports.sql
 wrangler d1 execute traffic_analytics --remote --file db/migrations/0004_webhook_alerts.sql
+wrangler d1 execute traffic_analytics --remote --file db/migrations/0005_github_app.sql
 ```
 
 Verify a sender domain with Resend, then set these secrets on the **snapshot
@@ -97,6 +98,52 @@ settings UI remains unavailable. Rotating the key requires re-entering saved
 webhooks. Each maintainer chooses a Slack or Discord incoming webhook and the
 events they want. The Worker checks traffic access before processing alerts.
 No alert is sent until enough comparable observations exist.
+
+### Configure the GitHub App
+
+Register a GitHub App under your GitHub account or organization. Its homepage
+is `https://github-traffic-analytics.ali-ammari.workers.dev`, its setup URL is
+`https://github-traffic-analytics.ali-ammari.workers.dev/app/setup`, and its
+webhook URL is
+`https://github-traffic-analytics.ali-ammari.workers.dev/api/github-app/webhook`.
+Set a high-entropy webhook secret. Enable **Redirect on update** for the setup
+URL so selecting more repositories returns to the setup page. For a fork,
+replace the host with its own public HTTPS origin.
+
+Grant repository **Administration: read** for [GitHub traffic endpoints](https://docs.github.com/en/rest/metrics/traffic),
+**Issues: write** for opted-in Issue reports, and **Discussions: write** for
+opted-in Discussion reports. Metadata read is implicit. Subscribe to
+`installation`, `repository`, and `release` events;
+[`installation_repositories`](https://docs.github.com/en/webhooks/webhook-events-and-payloads#installation_repositories) is delivered automatically by GitHub Apps. The
+App does not need Contents or webhook administration permissions. GitHub's
+traffic endpoints require Administration read, which is more sensitive than
+the name suggests; explain this clearly on the App installation page.
+
+Configure these secrets on the **application Worker**:
+
+```bash
+wrangler secret put GITHUB_APP_ID
+wrangler secret put GITHUB_APP_SLUG
+wrangler secret put GITHUB_APP_PRIVATE_KEY
+wrangler secret put GITHUB_APP_WEBHOOK_SECRET
+```
+
+Configure the same App ID and private key on the **snapshot Worker**:
+
+```bash
+wrangler secret put GITHUB_APP_ID --config wrangler.snapshot.jsonc
+wrangler secret put GITHUB_APP_PRIVATE_KEY --config wrangler.snapshot.jsonc
+```
+
+The private key is the PEM file downloaded from GitHub; enter its complete
+contents. App installation webhooks use GitHub's [HMAC-SHA256 signature](https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries) and are replay-guarded.
+The signed installing account starts tracking selected repositories
+automatically. The setup page can link an installation to a different signed-in
+maintainer only after checking that maintainer's GitHub traffic access to each
+selected repository. App-linked repositories use repository-scoped tokens that
+expire after one hour; the Worker creates fresh tokens for each scheduled run.
+Removing a repository or uninstalling the App stops new App-backed snapshots.
+Historical snapshots remain scoped to the account that captured them.
 
 ## CI deploy (gated)
 

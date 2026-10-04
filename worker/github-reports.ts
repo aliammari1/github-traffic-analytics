@@ -10,6 +10,7 @@ import {
 } from "../src/lib/github-report-delivery";
 import type { ReportDeliveryProvider } from "../src/lib/report-delivery";
 import { verifyTrafficAccess } from "./digest";
+import { RepositoryTokenProvider } from "./repository-token";
 
 interface Preference {
   owner_login: string;
@@ -19,12 +20,16 @@ interface Preference {
   destination: "issue" | "discussion";
   discussion_category_id: string | null;
   time_zone: string;
-  access_token: string;
+  access_token: string | null;
+  installation_id: number | null;
+  repository_id: number | null;
 }
 
 export interface GitHubReportEnv {
   DB: D1Database;
   SITE_URL?: string;
+  GITHUB_APP_ID?: string;
+  GITHUB_APP_PRIVATE_KEY?: string;
 }
 
 /** Send only reports explicitly configured by a traffic-authorized maintainer. */
@@ -35,12 +40,18 @@ export async function runGitHubReports(
 ): Promise<{ due: number; sent: number; failed: number; revoked: number }> {
   const { results: preferences } = await env.DB.prepare(
     `SELECT p.owner_login, p.repo_owner, p.repo_name, p.cadence, p.destination,
-            p.discussion_category_id, p.time_zone, t.access_token
+            p.discussion_category_id, p.time_zone, t.access_token,
+            CASE WHEN i.active = 1 THEN a.installation_id END AS installation_id,
+            CASE WHEN i.active = 1 THEN a.repository_id END AS repository_id
        FROM github_report_preferences p
-       JOIN tracked_repos t ON t.owner_login = p.owner_login
+       LEFT JOIN tracked_repos t ON t.owner_login = p.owner_login
          AND t.repo_owner = p.repo_owner AND t.repo_name = p.repo_name
-      WHERE p.enabled = 1`
+       LEFT JOIN app_tracked_repos a ON a.owner_login = p.owner_login
+         AND a.repo_owner = p.repo_owner AND a.repo_name = p.repo_name
+       LEFT JOIN github_app_installations i ON i.installation_id = a.installation_id
+      WHERE p.enabled = 1 AND (t.id IS NOT NULL OR (a.repository_id IS NOT NULL AND i.active = 1))`
   ).all<Preference>();
+  const tokens = new RepositoryTokenProvider(env);
   let due = 0;
   let sent = 0;
   let failed = 0;
@@ -77,7 +88,8 @@ export async function runGitHubReports(
     const deliveryId = claims[0]?.id;
     if (!deliveryId) continue;
     try {
-      if (!(await verifyTrafficAccess(pref))) {
+      const accessToken = await tokens.get(pref, pref.destination);
+      if (!(await verifyTrafficAccess({ ...pref, access_token: accessToken }))) {
         await env.DB.prepare(
           `DELETE FROM github_report_preferences
            WHERE owner_login = ? AND repo_owner = ? AND repo_name = ?`
@@ -109,7 +121,7 @@ export async function runGitHubReports(
           repoName: pref.repo_name,
           endingOn: window.endingOn,
         }).catch(() => null),
-        new PublicGitHubService({ token: pref.access_token })
+        new PublicGitHubService({ token: accessToken })
           .analyzePublicRepository(pref.repo_owner, pref.repo_name)
           .catch(() => null),
       ]);
@@ -150,7 +162,7 @@ export async function runGitHubReports(
         {
           owner: pref.repo_owner,
           repo: pref.repo_name,
-          token: pref.access_token,
+          token: accessToken,
           kind: pref.destination,
           categoryId: pref.discussion_category_id ?? undefined,
           siteUrl: env.SITE_URL ?? "https://github-traffic-analytics.ali-ammari.workers.dev",

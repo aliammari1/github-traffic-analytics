@@ -141,6 +141,8 @@ GitHub's traffic API returns a recent 14-day window. After a maintainer enables 
 
 Owners can preview a deterministic weekly report, export their stored traffic as CSV or JSON, and opt into a Monday email to their verified primary GitHub address when the deployment has email delivery configured. Missing days remain unavailable rather than appearing as zero.
 
+Installing the GitHub App and selecting repositories starts daily traffic archiving automatically. Scheduled collection then uses short-lived installation tokens scoped to those repositories; manual OAuth tracking remains available to deployments without an App.
+
 Maintainers can also opt into weekly or monthly reports posted as a GitHub Issue or Discussion. They choose the Discussion category when applicable. On public repositories, those posts expose the included traffic counts, so this delivery is always an explicit opt-in.
 
 Slack and Discord incoming webhook alerts can notify maintainers about observed star milestones, acceleration, slowdowns, referrer changes, and completed release windows. The webhook URL is encrypted before storage and alerts are sent only after an explicit opt-in.
