@@ -213,7 +213,7 @@ function referralSignals(windows: ComparisonWindow, day: string): GrowthAnomaly[
       percentageChange: null,
       zScore: null,
       startedAt: day,
-      explanation: `${top[0]} is the new leading referrer with ${top[1]} views in the current window.`,
+      explanation: `${top[0]} leads the current captured top-referrer list with ${top[1]} views and was absent from the previous captured list.`,
     });
   }
   if (previousTotal >= 20) {
@@ -232,7 +232,7 @@ function referralSignals(windows: ComparisonWindow, day: string): GrowthAnomaly[
         percentageChange: percent(afterShare, beforeShare),
         zScore: null,
         startedAt: day,
-        explanation: `${name}'s share of referral views changed from ${round(beforeShare * 100)}% to ${round(afterShare * 100)}% between comparison windows.`,
+        explanation: `${name}'s share of captured top-referrer counts changed from ${round(beforeShare * 100)}% to ${round(afterShare * 100)}% between comparison windows.`,
       });
     }
   }

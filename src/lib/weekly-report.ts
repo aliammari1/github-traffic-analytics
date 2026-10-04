@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: MIT
 import { starsGained, type StarPoint } from "./analytics";
-import { detectGrowthAnomalies, type ComparisonWindow, type GrowthAnomaly } from "./anomalies";
+import {
+  detectGrowthAnomalies,
+  type ComparisonWindow,
+  type GrowthAnomaly,
+  type NamedCount,
+} from "./anomalies";
 import type { SnapshotRow } from "./snapshots";
 
 const DAY_MS = 86_400_000;
@@ -48,6 +53,7 @@ export interface WeeklyReportInput {
   releases: Array<{ tagName: string; publishedAt: string }>;
   referrers?: ComparisonWindow;
   paths?: ComparisonWindow;
+  topReferrer?: NamedCount | null;
 }
 
 function sumCompleteWeek(
@@ -140,7 +146,8 @@ export function buildWeeklyReport(input: WeeklyReportInput): WeeklyRepositoryRep
       new Date(end)
     ).filter((signal) => signal.metric === "stars"),
   ];
-  const topReferrer = input.referrers?.current.toSorted((a, b) => b.count - a.count)[0] ?? null;
+  const topReferrer =
+    input.referrers?.current.toSorted((a, b) => b.count - a.count)[0] ?? input.topReferrer ?? null;
   const biggestReferrerMovement = strongest(
     anomalies.filter((item) => item.type === "referrer_share_change")
   );
@@ -170,7 +177,7 @@ export function buildWeeklyReport(input: WeeklyReportInput): WeeklyRepositoryRep
   if (clones.count !== null) highlights.push(`${clones.count} clones across seven complete days.`);
   if (topReferrer)
     highlights.push(
-      `Leading referrer: ${topReferrer.name} (${topReferrer.count} views in the supplied window).`
+      `Leading referrer: ${topReferrer.name} (${topReferrer.count} views in GitHub's captured rolling 14-day window).`
     );
   if (releases.length)
     highlights.push(

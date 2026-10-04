@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MIT
-import { env } from "@/env";
 import {
   StarPoint,
   StarVelocityResult,
@@ -130,7 +129,10 @@ export class PublicGitHubService {
   constructor(options?: { baseUrl?: string; fetchFn?: typeof fetch; token?: string }) {
     this.baseUrl = options?.baseUrl || "https://api.github.com";
     this.customFetch = options?.fetchFn || fetch;
-    this.token = options?.token ?? env.GITHUB_PUBLIC_TOKEN;
+    // Keep this service usable from the standalone Cron Worker as well as Next.js.
+    // Cloudflare populates process.env for nodejs_compat Workers on this project's
+    // compatibility date; callers can also pass a token explicitly.
+    this.token = options?.token ?? process.env.GITHUB_PUBLIC_TOKEN;
   }
 
   private async request<T>(

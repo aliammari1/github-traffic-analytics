@@ -97,4 +97,20 @@ describe("buildWeeklyReport", () => {
       "Star growth: +22 this week versus +8 in the previous week."
     );
   });
+
+  it("describes a lone captured referrer without inventing movement", () => {
+    const report = buildWeeklyReport({
+      fullName: "alice/project",
+      endingOn: "2026-09-27",
+      snapshots: [],
+      stars: null,
+      releases: [],
+      topReferrer: { name: "news.ycombinator.com", count: 24 },
+    });
+    expect(report.topReferrer?.name).toBe("news.ycombinator.com");
+    expect(report.biggestReferrerMovement).toBeNull();
+    expect(report.highlights).toContain(
+      "Leading referrer: news.ycombinator.com (24 views in GitHub's captured rolling 14-day window)."
+    );
+  });
 });

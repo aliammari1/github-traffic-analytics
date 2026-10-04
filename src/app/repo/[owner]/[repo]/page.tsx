@@ -32,6 +32,7 @@ import ShareActions from "@/components/ShareActions";
 import HistoricalTraffic from "@/components/HistoricalTraffic";
 import InsightsPanel from "@/components/InsightsPanel";
 import WeeklyReportPreview from "@/components/WeeklyReportPreview";
+import WeeklyDigestSettings from "@/components/WeeklyDigestSettings";
 import AnomalyList from "@/components/AnomalyList";
 import type { PublicRepoAnalysis } from "@/lib/github-public";
 import { calculateReleaseImpact } from "@/lib/analytics";
@@ -987,6 +988,7 @@ export default function RepositoryAnalyticsPage({
           {hasPrivateAccess && privateTraffic ? (
             <>
               <WeeklyReportPreview owner={owner} repo={repo} />
+              <WeeklyDigestSettings owner={owner} repo={repo} />
               <InsightsPanel
                 payload={{
                   repoCount: 1,

@@ -54,6 +54,7 @@ More legitimate GitHub stars & organic adoption
 - [x] **Progressive disclosure & security**: Public metrics open to everyone; private traffic securely unlocked for verified repository owners via encrypted httpOnly OAuth sessions.
 - [x] **Deterministic anomaly detection**: Explainable traffic, clone, star, referrer, and content change signals with release context.
 - [x] **Weekly report preview**: Delivery-neutral report engine and owner-only preview using complete observation windows.
+- [x] **Opt-in weekly email**: Timezone-aware Monday digest to a verified GitHub email, with duplicate protection and explicit opt-out when the deployment has an email provider configured.
 
 ---
 
@@ -70,7 +71,6 @@ High-leverage features that turn existing users into discovery channels:
 
 Deep utility features that keep maintainers coming back:
 
-- [ ] **Weekly digest email**: Optional Monday morning briefing summarizing 7-day stars, clones, views, top referrer spikes, and release momentum.
 - [ ] **External spike attribution**: Link observed referrer changes to verifiable external posts where public evidence is available.
 - [ ] **Automated GitHub Discussion / Issue digest**: GitHub Action or scheduled worker posting monthly traffic summaries directly into repository discussions.
 

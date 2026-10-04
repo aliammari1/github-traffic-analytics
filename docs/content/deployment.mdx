@@ -44,9 +44,39 @@ pnpm exec opennextjs-cloudflare deploy  # deploy the build above
 wrangler deploy --config wrangler.snapshot.jsonc
 ```
 
-It runs daily at 06:00 UTC (`triggers.crons`).
+It captures traffic daily at 06:00 UTC (`triggers.crons`) and checks opt-in
+weekly email schedules hourly. Users must opt in to weekly email separately.
 The Cron Worker uses the same D1 database. Users must opt in to tracking before
 it captures their repository traffic.
+
+### Configure weekly email
+
+The D1 schema creates `weekly_digest_preferences`, `report_deliveries`, and
+`traffic_source_snapshots` for top-referrer/path captures.
+Existing deployments can apply the additive migration before deploying:
+
+```bash
+wrangler d1 execute traffic_analytics --remote --file db/migrations/0002_weekly_digest.sql
+```
+
+Verify a sender domain with Resend, then set these secrets on the **snapshot
+Worker** (the worker that also runs digest checks):
+
+```bash
+wrangler secret put RESEND_API_KEY --config wrangler.snapshot.jsonc
+wrangler secret put REPORT_FROM_EMAIL --config wrangler.snapshot.jsonc
+```
+
+`REPORT_FROM_EMAIL` must be an address on that verified domain. Once both are
+configured, set `DIGEST_EMAIL_ENABLED=true` on the **application Worker** and
+redeploy it. Keep the flag false until mail delivery is ready. Opt-in saves the
+verified primary GitHub email, enables daily tracking for that repository, and
+sends at the first hourly check in the user's Monday 09:00–09:59 local window.
+The 10:00 and 11:00 checks retry failed deliveries. Every send has a D1
+delivery claim and a provider idempotency key. UTC reporting windows include
+only complete days, so the ending date can differ by timezone.
+For a fork, also set `SITE_URL` on the snapshot Worker to your own HTTPS origin;
+the default links to the production deployment shown above.
 
 ## CI deploy (gated)
 
@@ -60,5 +90,9 @@ repository variable `ENABLE_CF_DEPLOY` is `true` and these secrets are set:
 | `NEXTAUTH_SECRET`, `NEXTAUTH_URL`              | NextAuth              |
 | `GH_OAUTH_CLIENT_ID`, `GH_OAUTH_CLIENT_SECRET` | GitHub OAuth          |
 | `ANTHROPIC_API_KEY`                            | AI insights           |
+
+Weekly email also needs `RESEND_API_KEY` and `REPORT_FROM_EMAIL` configured as
+secrets on the snapshot Worker, plus `DIGEST_EMAIL_ENABLED=true` on the app
+Worker. These are optional; without them the email opt-in stays disabled.
 
 Without them the deploy job is skipped — forks and CI never attempt a deploy.

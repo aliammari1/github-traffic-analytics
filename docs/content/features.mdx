@@ -70,6 +70,7 @@ empty before tracking begins. The export route checks both your signed-in
 session and current GitHub traffic access, and restricts the D1 query to your
 own snapshot records. Use optional `from` and `to` ISO dates to narrow a large
 archive. The response is private and never cached publicly.
+
 ## Weekly report preview
 
 Authorized maintainers can preview the latest seven complete UTC days from the
@@ -78,9 +79,23 @@ unique clones, available public star growth, releases during the period, and
 deterministic growth signals. Traffic totals are shown only when all seven days
 were captured; partial data is labeled unavailable rather than zero. Public
 star metrics can be unavailable for private repositories or incomplete star
-history. The preview is not sent anywhere until a future delivery option is
-explicitly enabled.
+history. Previewing alone does not send email; delivery needs a separate opt-in.
 
+## Weekly email
+
+When delivery is configured by the deployment owner, authorized maintainers
+can opt in from the Insights tab. The recipient is their verified primary
+GitHub email; the app never accepts an arbitrary address. The hourly Cron
+Worker sends the report on Monday morning in the selected IANA timezone, with
+up to two retry hours. A delivery ledger and provider idempotency key prevent
+duplicate emails. Owners can turn email off from the same tab. The report uses
+completed UTC days and labels missing traffic or star data unavailable. It also
+uses stored GitHub top-referrer and popular-path captures when available.
+The Worker rechecks GitHub traffic access before delivery and removes the email
+subscription if that access has been revoked.
+Those source lists each cover GitHub's rolling 14-day window; comparing two
+captures about a week apart describes a share change, not a precise weekly
+referral count or proof that an external post caused growth.
 
 ## Traffic badge (the viral loop)
 

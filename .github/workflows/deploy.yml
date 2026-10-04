@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-# Deploys the Next.js app (via @opennextjs/cloudflare) and the daily-snapshot
+# Deploys the Next.js app (via @opennextjs/cloudflare) and the snapshot/digest
 # Cron Worker to Cloudflare. Gated on Cloudflare secrets: if they are not set,
 # the job is skipped (so forks / this environment never attempt a deploy).
 name: Deploy (Cloudflare)
@@ -54,7 +54,7 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy
 
-      - name: Deploy snapshot cron worker
+      - name: Deploy snapshot and digest cron worker
         uses: cloudflare/wrangler-action@392082e81ffbcb9ebdde27400634aa004b35ea37 # v3.14.0
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}

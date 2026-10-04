@@ -7,9 +7,9 @@
   "main": "worker/snapshot.ts",
   "compatibility_date": "2026-06-01",
   "compatibility_flags": ["nodejs_compat"],
-  // Runs daily at 06:00 UTC.
+  // Daily snapshots at 06:00 UTC, plus hourly timezone-aware digest checks.
   "triggers": {
-    "crons": ["0 6 * * *"]
+    "crons": ["0 6 * * *", "0 * * * *"]
   },
   // Same D1 database as the app reads from.
   "d1_databases": [
