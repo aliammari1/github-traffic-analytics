@@ -28,6 +28,16 @@ describe("renderGrowthCard", () => {
     expect(svg).not.toContain("Latest release:");
   });
 
+  it("renders with tokyo-night and solarized-dark themes", () => {
+    const tokyo = renderGrowthCard(repo, "tokyo-night");
+    expect(tokyo).toContain("#1a1b26");
+    expect(tokyo).toContain("#73daca");
+
+    const solarized = renderGrowthCard(repo, "solarized-dark");
+    expect(solarized).toContain("#002b36");
+    expect(solarized).toContain("#2aa198");
+  });
+
   it("renders a dependency-free sparkline from recent star history", () => {
     const history = [
       { date: "2026-09-01", stars: 100 },

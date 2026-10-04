@@ -4,6 +4,7 @@ import { starsGained, type StarPoint } from "./analytics";
 export type AnomalyType =
   | "traffic_spike"
   | "traffic_drop"
+  | "weekend_surge"
   | "clone_spike"
   | "clone_drop"
   | "star_acceleration"
@@ -23,6 +24,11 @@ export interface GrowthAnomaly {
   zScore: number | null;
   startedAt: string;
   relatedRelease?: { tagName: string; publishedAt: string };
+  attribution?: {
+    platform: string;
+    searchUrl?: string;
+    verifiedQuery?: string;
+  };
   explanation: string;
 }
 
@@ -39,6 +45,7 @@ export interface ComparisonWindow {
   current: NamedCount[];
 }
 export interface AnomalyInput {
+  repository?: string;
   views?: DailyMetric[];
   clones?: DailyMetric[];
   stars?: StarPoint[];
@@ -161,6 +168,127 @@ function dailySignals(
   return result;
 }
 
+const EXTERNAL_ATTRIBUTION_PLATFORMS: Array<{
+  match: RegExp;
+  platform: string;
+  searchUrl: (domain: string, repo?: string) => string;
+}> = [
+  {
+    match: /news\.ycombinator\.com/i,
+    platform: "Hacker News",
+    searchUrl: (_domain, repo) =>
+      repo
+        ? `https://hn.algolia.com/?q=${encodeURIComponent(repo)}`
+        : "https://news.ycombinator.com",
+  },
+  {
+    match: /(^|\.)reddit\.com$/i,
+    platform: "Reddit",
+    searchUrl: (_domain, repo) =>
+      repo
+        ? `https://www.reddit.com/search/?q=${encodeURIComponent(repo)}`
+        : "https://www.reddit.com",
+  },
+  {
+    match: /^(x\.com|twitter\.com|t\.co)$/i,
+    platform: "X / Twitter",
+    searchUrl: (_domain, repo) =>
+      repo ? `https://x.com/search?q=${encodeURIComponent(repo)}` : "https://x.com",
+  },
+  {
+    match: /^dev\.to$/i,
+    platform: "DEV Community",
+    searchUrl: (_domain, repo) =>
+      repo ? `https://dev.to/search?q=${encodeURIComponent(repo)}` : "https://dev.to",
+  },
+  {
+    match: /^producthunt\.com$/i,
+    platform: "Product Hunt",
+    searchUrl: (_domain, repo) =>
+      repo
+        ? `https://www.producthunt.com/search?q=${encodeURIComponent(repo)}`
+        : "https://www.producthunt.com",
+  },
+  {
+    match: /^lobste\.rs$/i,
+    platform: "Lobsters",
+    searchUrl: (_domain, repo) =>
+      repo ? `https://lobste.rs/search?q=${encodeURIComponent(repo)}` : "https://lobste.rs",
+  },
+];
+
+export function resolveAttribution(
+  referrerDomain: string,
+  repository?: string
+): { platform: string; searchUrl?: string; verifiedQuery?: string } | undefined {
+  const match = EXTERNAL_ATTRIBUTION_PLATFORMS.find((p) => p.match.test(referrerDomain));
+  if (!match) return undefined;
+  return {
+    platform: match.platform,
+    searchUrl: match.searchUrl(referrerDomain, repository),
+    verifiedQuery: repository,
+  };
+}
+
+function weekendSignals(points: DailyMetric[], now: Date): GrowthAnomaly[] {
+  const days = sanitizedDaily(points);
+  const completed = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - DAY_MS;
+
+  const weekendCounts: number[] = [];
+  const weekdayCounts: number[] = [];
+  let latestWeekendDay: string | null = null;
+
+  for (let offset = 0; offset < 14; offset++) {
+    const time = completed - offset * DAY_MS;
+    const day = dayKey(time);
+    const count = days.get(day);
+    if (count === undefined) continue;
+
+    const dayOfWeek = new Date(time).getUTCDay();
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      weekendCounts.push(count);
+      if (!latestWeekendDay) {
+        latestWeekendDay = day;
+      }
+    } else {
+      weekdayCounts.push(count);
+    }
+  }
+
+  if (weekendCounts.length < 2 || weekdayCounts.length < 5 || !latestWeekendDay) {
+    return [];
+  }
+
+  const weekdayAvg = sum(weekdayCounts) / weekdayCounts.length;
+  const weekendAvg = sum(weekendCounts) / weekendCounts.length;
+
+  if (weekdayAvg <= 0 || weekdayAvg < 5) {
+    return [];
+  }
+
+  const ratio = weekendAvg / weekdayAvg;
+  const delta = weekendAvg - weekdayAvg;
+
+  if (ratio >= 2.0 && delta >= 10) {
+    const formattedRatio = round(ratio);
+    return [
+      {
+        type: "weekend_surge",
+        metric: "views",
+        severity: ratio >= 3.0 ? "high" : "notable",
+        observedValue: round(weekendAvg),
+        baselineValue: round(weekdayAvg),
+        percentageChange: percent(weekendAvg, weekdayAvg),
+        zScore: null,
+        startedAt: latestWeekendDay,
+        explanation: `Weekend traffic averaged ${round(weekendAvg)} views/day, observed at ${formattedRatio}x the weekday baseline (${round(weekdayAvg)} views/day).`,
+      },
+    ];
+  }
+
+  return [];
+}
+
 function starSignals(stars: StarPoint[], now: Date): GrowthAnomaly[] {
   const current = starsGained(stars, 7, now);
   const previous = starsGained(stars, 7, new Date(now.getTime() - 7 * DAY_MS));
@@ -195,7 +323,11 @@ function namedCounts(items: NamedCount[]): Map<string, number> {
   return values;
 }
 
-function referralSignals(windows: ComparisonWindow, day: string): GrowthAnomaly[] {
+function referralSignals(
+  windows: ComparisonWindow,
+  day: string,
+  repository?: string
+): GrowthAnomaly[] {
   const previous = namedCounts(windows.previous);
   const current = namedCounts(windows.current);
   const previousTotal = sum([...previous.values()]);
@@ -204,6 +336,7 @@ function referralSignals(windows: ComparisonWindow, day: string): GrowthAnomaly[
   const result: GrowthAnomaly[] = [];
   const top = [...current].sort((a, b) => b[1] - a[1])[0];
   if (top && !previous.has(top[0]) && top[1] >= 10 && top[1] / currentTotal >= 0.15) {
+    const attribution = resolveAttribution(top[0], repository);
     result.push({
       type: "new_top_referrer",
       metric: "referrers",
@@ -213,7 +346,10 @@ function referralSignals(windows: ComparisonWindow, day: string): GrowthAnomaly[
       percentageChange: null,
       zScore: null,
       startedAt: day,
-      explanation: `${top[0]} leads the current captured top-referrer list with ${top[1]} views and was absent from the previous captured list.`,
+      attribution,
+      explanation: attribution
+        ? `${top[0]} (${attribution.platform}) leads the current captured top-referrer list with ${top[1]} views and was absent from the previous captured list. Public mentions can be verified on ${attribution.platform}.`
+        : `${top[0]} leads the current captured top-referrer list with ${top[1]} views and was absent from the previous captured list.`,
     });
   }
   if (previousTotal >= 20) {
@@ -223,6 +359,7 @@ function referralSignals(windows: ComparisonWindow, day: string): GrowthAnomaly[
       const beforeShare = old / previousTotal;
       const afterShare = count / currentTotal;
       if (Math.abs(afterShare - beforeShare) < 0.2) continue;
+      const attribution = resolveAttribution(name, repository);
       result.push({
         type: "referrer_share_change",
         metric: "referrers",
@@ -232,6 +369,7 @@ function referralSignals(windows: ComparisonWindow, day: string): GrowthAnomaly[
         percentageChange: percent(afterShare, beforeShare),
         zScore: null,
         startedAt: day,
+        attribution,
         explanation: `${name}'s share of captured top-referrer counts changed from ${round(beforeShare * 100)}% to ${round(afterShare * 100)}% between comparison windows.`,
       });
     }
@@ -265,8 +403,11 @@ export function detectGrowthAnomalies(input: AnomalyInput, now = new Date()): Gr
   const results = [
     ...dailySignals(input.views ?? [], "views", now),
     ...dailySignals(input.clones ?? [], "clones", now),
+    ...weekendSignals(input.views ?? [], now),
     ...starSignals(input.stars ?? [], now),
-    ...(input.referrers ? referralSignals(input.referrers, dayKey(now.getTime())) : []),
+    ...(input.referrers
+      ? referralSignals(input.referrers, dayKey(now.getTime()), input.repository)
+      : []),
     ...(input.paths ? pathSignals(input.paths, dayKey(now.getTime())) : []),
   ];
   if (!input.releases?.length) return results;

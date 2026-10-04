@@ -144,4 +144,97 @@ describe("detectGrowthAnomalies", () => {
     expect(anomalies.find((item) => item.type === "new_top_referrer")?.percentageChange).toBeNull();
     expect(anomalies.some((item) => item.metric === "views")).toBe(false);
   });
+
+  describe("weekend_surge signal", () => {
+    // 14 complete days ending 2026-09-27 (Sunday):
+    // Weekdays (10 days): Sep 14-18, Sep 21-25
+    // Weekends (4 days): Sep 19, 20, 26, 27
+    const weekdays = [14, 15, 16, 17, 18, 21, 22, 23, 24, 25];
+    const weekends = [19, 20, 26, 27];
+
+    it("detects a weekend traffic surge when weekend views exceed weekday baseline by >= 2.0x", () => {
+      const views = [...weekdays.map((day) => at(day, 20)), ...weekends.map((day) => at(day, 50))];
+      const anomalies = detectGrowthAnomalies({ views }, now);
+      const surge = anomalies.find((item) => item.type === "weekend_surge");
+
+      expect(surge).toBeDefined();
+      expect(surge?.metric).toBe("views");
+      expect(surge?.observedValue).toBe(50);
+      expect(surge?.baselineValue).toBe(20);
+      expect(surge?.percentageChange).toBe(150);
+      expect(surge?.startedAt).toBe("2026-09-27");
+      expect(surge?.explanation).toBe(
+        "Weekend traffic averaged 50 views/day, observed at 2.5x the weekday baseline (20 views/day)."
+      );
+    });
+
+    it("does not flag weekend surge when traffic is flat or below 2.0x threshold", () => {
+      const views = [...weekdays.map((day) => at(day, 30)), ...weekends.map((day) => at(day, 35))];
+      const anomalies = detectGrowthAnomalies({ views }, now);
+      expect(anomalies.some((item) => item.type === "weekend_surge")).toBe(false);
+    });
+
+    it("ignores zero baseline or tiny baseline to avoid division by zero or noisy alerts", () => {
+      const zeroWeekday = [
+        ...weekdays.map((day) => at(day, 0)),
+        ...weekends.map((day) => at(day, 50)),
+      ];
+      expect(
+        detectGrowthAnomalies({ views: zeroWeekday }, now).some(
+          (item) => item.type === "weekend_surge"
+        )
+      ).toBe(false);
+
+      const tinyViews = [
+        ...weekdays.map((day) => at(day, 2)),
+        ...weekends.map((day) => at(day, 5)),
+      ];
+      expect(
+        detectGrowthAnomalies({ views: tinyViews }, now).some(
+          (item) => item.type === "weekend_surge"
+        )
+      ).toBe(false);
+    });
+
+    it("requires complete observations and ignores incomplete windows with missing days", () => {
+      const missingWeekdays = [
+        at(14, 20),
+        at(15, 20),
+        at(16, 20),
+        ...weekends.map((day) => at(day, 50)),
+      ];
+      expect(
+        detectGrowthAnomalies({ views: missingWeekdays }, now).some(
+          (item) => item.type === "weekend_surge"
+        )
+      ).toBe(false);
+    });
+  });
+
+  describe("external spike attribution", () => {
+    it("attaches verifiable public search attribution for known platforms", () => {
+      const anomalies = detectGrowthAnomalies(
+        {
+          repository: "aliammari1/github-traffic-analytics",
+          referrers: {
+            previous: [],
+            current: [
+              { name: "news.ycombinator.com", count: 45 },
+              { name: "github.com", count: 15 },
+            ],
+          },
+        },
+        now
+      );
+
+      const referrer = anomalies.find((item) => item.type === "new_top_referrer");
+      expect(referrer).toBeDefined();
+      expect(referrer?.attribution?.platform).toBe("Hacker News");
+      expect(referrer?.attribution?.searchUrl).toContain(
+        "hn.algolia.com/?q=aliammari1%2Fgithub-traffic-analytics"
+      );
+      expect(referrer?.explanation).toContain("Hacker News");
+      expect(referrer?.explanation).toContain("Public mentions can be verified");
+    });
+  });
 });

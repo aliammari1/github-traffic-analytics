@@ -22,6 +22,26 @@ gh traffic report OWNER/REPO
 gh traffic export OWNER/REPO --format csv > traffic.csv
 ```
 
+### Structured JSON Output (`--json`)
+
+Every query command supports `--json` for automation, custom dashboards, and piping directly into tools like `jq`:
+
+```bash
+# Extract repository momentum score
+gh traffic view cli/cli --json | jq .growth.momentum.score
+
+# Compare multiple repositories in structured JSON
+gh traffic compare cli/cli vercel/next.js --json
+
+# Pipe 30-day star trajectory to custom tooling
+gh traffic stars cli/cli --days 30 --json
+
+# Inspect release velocity delta
+gh traffic release cli/cli v2.50.0 --json
+```
+
+Status diagnostics and fallback notices (such as branch archive fallbacks) are written exclusively to `stderr`, guaranteeing `stdout` remains clean, machine-parseable JSON streams.
+
 `report` and `export` need local `gh auth` access to the repository traffic API.
 `export` first reads `data/daily.json` from the `traffic-history` branch created
 by [GitHub Traffic Analytics Lite](../../docs/github-action.md). If that branch

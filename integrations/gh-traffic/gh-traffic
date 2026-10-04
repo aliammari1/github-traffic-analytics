@@ -231,7 +231,7 @@ async function main() {
       );
   } else if (command === "export") {
     const traffic = ownerTraffic(fullName, options.source);
-    if (options.format === "json")
+    if (options.format === "json" || options.json)
       console.log(
         JSON.stringify(
           { version: 1, source: traffic.source, repository: fullName, daily: traffic.daily },
