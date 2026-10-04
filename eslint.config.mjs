@@ -17,6 +17,8 @@ const eslintConfig = [
       "next-env.d.ts",
       // The Nextra docs site is a separate project with its own toolchain.
       "docs/**",
+      // Integrations (CLI, MCP, Raycast) have their own standalone toolchains.
+      "integrations/**",
     ],
   },
   ...next,
