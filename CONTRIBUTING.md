@@ -9,38 +9,52 @@ Thank you for your interest in improving GitHub Traffic Analytics! We are buildi
 ## 🏗️ Codebase Structure
 
 ```text
-src/
-├── app/
-│   ├── api/
-│   │   ├── card/[owner]/[repo]/ # Embeddable README SVG growth card generator
-│   │   ├── badge/               # Shields-style live views badge endpoint
-│   │   ├── public/repo/         # Unauthenticated public repository intelligence API
-│   │   ├── insights/            # Contextual AI streaming endpoint (Anthropic)
-│   │   ├── traffic/             # Authenticated GitHub traffic data proxy
-│   │   ├── track/               # Toggle snapshot tracking per repo
-│   │   ├── repositories/        # User repository listing with tracking status
-│   │   └── snapshots/           # Historical D1 snapshot queries
-│   ├── repo/[owner]/[repo]/     # Public canonical repository intelligence page
-│   ├── compare/                 # Multi-repository comparative trajectory analysis
-│   ├── repositories/            # Authenticated repository manager & portfolio view
-│   ├── traffic/                 # Authenticated 14-day & long-term traffic dashboard
-│   ├── page.tsx                 # Public homepage & instant repo analyzer
-│   └── layout.tsx               # Root application layout & navigation
-├── components/
-│   ├── StarHistoryChart.tsx     # Trajectory line chart with release event markers
-│   ├── ShareActions.tsx         # Share modal, copy link, and copy Markdown card
-│   ├── InsightsPanel.tsx        # Contextual AI explanation buttons
-│   ├── HistoricalTraffic.tsx    # Multi-month D1 historical views & clones chart
-│   └── TrafficDashboard.tsx     # Private traffic analytics visualization
-├── lib/
-│   ├── analytics.ts             # Deterministic math engine (velocity, momentum, release impact)
-│   ├── github-public.ts         # Unauthenticated typed public GitHub API client & cache
-│   ├── github.ts                # Authenticated Octokit traffic proxy
-│   ├── growth-card.ts           # Zero-dependency SVG generator & themes
-│   ├── badge.ts                 # Zero-dependency SVG shields badge renderer
-│   ├── insights.ts              # Zod validation & deterministic prompt construction for AI
-│   └── snapshots.ts             # Cloudflare D1 query layer for daily snapshots
-└── test/                        # Shared test setup, MSW handlers, and mocks
+├── action/                      # Standalone GitHub Action for traffic archiving into git branch
+├── integrations/
+│   ├── gh-traffic/              # Official GitHub CLI extension (`gh traffic view/compare/export`)
+│   ├── mcp-server/              # Model Context Protocol server for AI coding agents
+│   └── raycast/                 # Native Raycast macOS extension
+├── src/
+│   ├── app/
+│   │   ├── api/
+│   │   │   ├── card/            # Zero-dependency SVG cards (growth, comparison, milestone)
+│   │   │   ├── certificate/     # Milestone completion SVG certificates
+│   │   │   ├── badge/           # Shields-style live views badge endpoint
+│   │   │   ├── public/repo/     # Unauthenticated public repository intelligence API
+│   │   │   ├── v1/              # Versioned REST API v1 (`/api/v1/repositories/...`, `/api/v1/compare`)
+│   │   │   ├── report/          # Neutral weekly report delivery preview & scheduling
+│   │   │   ├── alerts/          # Webhook notifications (Slack, Discord)
+│   │   │   ├── digest/          # Email digest preferences and delivery
+│   │   │   ├── github-app/      # GitHub App setup & webhook handlers
+│   │   │   ├── traffic/         # Authenticated GitHub traffic data proxy
+│   │   │   ├── track/           # Toggle snapshot tracking per repo
+│   │   │   ├── repositories/    # User repository listing with tracking status
+│   │   │   └── snapshots/       # Historical D1 snapshot queries & CSV/JSON export
+│   │   ├── repo/[owner]/[repo]/ # Public canonical repository intelligence page
+│   │   ├── compare/             # Multi-repository comparative trajectory analysis
+│   │   ├── launch/[owner]/[repo]# Shareable launch event impact reports
+│   │   ├── repositories/        # Authenticated repository manager & portfolio view
+│   │   ├── traffic/             # Authenticated 14-day & long-term traffic dashboard
+│   │   ├── page.tsx             # Public homepage & instant repo analyzer
+│   │   └── manifest.ts          # PWA web app manifest
+│   ├── components/              # Shared UI components (Charts, Cards, Panels, Settings)
+│   ├── lib/
+│   │   ├── analytics.ts         # Deterministic math engine (velocity, momentum, release impact)
+│   │   ├── anomalies.ts         # Explainable anomaly detection engine
+│   │   ├── weekly-report.ts     # Delivery-neutral weekly analytics report generator
+│   │   ├── github-public.ts     # Unauthenticated typed public GitHub API client & cache
+│   │   ├── github.ts            # Authenticated Octokit traffic proxy
+│   │   ├── webhook-alerts.ts    # Slack / Discord webhook notification dispatcher
+│   │   ├── growth-card.ts       # Zero-dependency SVG generator & themes
+│   │   ├── comparison-card.ts   # Two-repository SVG comparison card renderer
+│   │   ├── milestone-card.ts    # Star milestone badge & threshold logic
+│   │   ├── certificate.ts       # Social milestone certificate SVG renderer
+│   │   └── snapshots.ts         # Cloudflare D1 query layer for daily snapshots
+│   └── test/                    # Shared MSW handlers, deterministic mock data, and test setup
+├── worker/
+│   ├── snapshot.ts              # Daily Cloudflare Cron Worker (traffic snapshotting)
+│   └── digest.ts                # Weekly Monday Cron Worker (email digests & alerts)
+└── docs/                        # Project documentation, launch kit, and ADRs
 ```
 
 ---
@@ -109,6 +123,45 @@ To add a new theme:
 
 ---
 
+## 🚨 How to Add a Deterministic Growth Signal
+
+Growth signals and anomalies in [`src/lib/anomalies.ts`](src/lib/anomalies.ts) provide explainable insights on traffic, stars, clones, and referrers without opaque heuristics:
+
+1. Define the signal type in `GrowthSignal['type']`.
+2. Implement the deterministic detection logic comparing observation windows against baseline history.
+3. Include explainable human-readable reasoning and release context when available.
+4. Add unit tests in [`src/lib/anomalies.test.ts`](src/lib/anomalies.test.ts) testing threshold edges and zero baselines.
+
+---
+
+## 🔔 How to Add a Notification Provider
+
+Webhook notifications are dispatched deterministically in [`src/lib/webhook-alerts.ts`](src/lib/webhook-alerts.ts):
+
+1. Define provider format in `WebhookPlatform` (`slack`, `discord`, `custom`).
+2. Construct payload adhering to the platform's incoming webhook schema.
+3. Ensure webhook URLs are stored encrypted in Cloudflare D1 (`app_alert_webhooks`) via [`src/lib/webhook-secrets.ts`](src/lib/webhook-secrets.ts).
+4. Add unit tests verifying delivery formatting and error handling.
+
+---
+
+## 🔌 Working with Integrations
+
+- **GitHub CLI Extension (`integrations/gh-traffic`)**: Standalone CLI extension wrapping public and authenticated endpoints. Test with `node index.js view owner/repo`.
+- **MCP Server (`integrations/mcp-server`)**: Model Context Protocol server exposing `analyze_repo_growth` and `explain_repo_changes` to agentic tools (Antigravity, Cursor, Claude Code). Run `pnpm --ignore-workspace build` and test with standard MCP JSON-RPC.
+- **Raycast Extension (`integrations/raycast`)**: macOS command bar extension. Run `pnpm --ignore-workspace run build` and `tsc --noEmit`.
+- **Standalone Action (`action/`)**: Standalone GitHub Action archiving traffic to `traffic-history` branch. Test with `node action/index.mjs`.
+
+---
+
+## 🧪 Test-Data Conventions
+
+- **Never mock external APIs with live network calls**: Use MSW (`src/test/msw.ts`) or `vi.fn()` for all Octokit/GitHub REST requests.
+- **Deterministic timestamps**: Always freeze time or use static ISO strings (`2026-10-01T00:00:00Z`) when testing date-dependent formulas.
+- **Explicit error paths**: Always verify 400, 404, 409, 429, and 503 scenarios with appropriate `Cache-Control: private, no-store` responses.
+
+---
+
 ## 🧪 Running Tests & Quality Gates
 
 All pull requests must pass the project's quality gates:
@@ -120,17 +173,26 @@ pnpm lint
 # 2. TypeScript compilation
 pnpm typecheck
 
-# 3. Unit and component tests with coverage (must satisfy ≥ 80% thresholds)
+# 3. Code formatting check
+pnpm format:check
+
+# 4. Unit and component tests with coverage (must satisfy ≥ 80% thresholds)
 pnpm test:coverage
 
-# 4. Production Next.js build
+# 5. Production Next.js build
 pnpm build
 
-# 5. Playwright end-to-end test suite
-pnpm test:e2e
+# 6. Playwright end-to-end test suite
+CI=true pnpm test:e2e
 
-# 6. Documentation site build
-cd docs && pnpm install --frozen-lockfile && pnpm build && cd ..
+# 7. Cloudflare Worker OpenNext bundle build
+SKIP_ENV_VALIDATION=true pnpm cf:build
+
+# 8. Production dependency security audit
+pnpm audit --prod
+
+# 9. Documentation site build
+cd docs && pnpm install --ignore-workspace --frozen-lockfile && pnpm build && cd ..
 ```
 
 ---

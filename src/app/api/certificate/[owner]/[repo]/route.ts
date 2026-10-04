@@ -21,14 +21,20 @@ export async function GET(
     parsed.repo !== repo ||
     (value !== null && !isStarMilestone(Number(value)))
   ) {
-    return new Response("Invalid repository or milestone", { status: 400 });
+    return new Response("Invalid repository or milestone", {
+      status: 400,
+      headers: { "Cache-Control": "private, no-store" },
+    });
   }
   try {
     const analysis = await publicGitHub.analyzePublicRepository(owner, repo);
     const milestone =
       value === null ? getHighestMilestone(analysis.repository.starsCount) : Number(value);
     if (!milestone || analysis.repository.starsCount < milestone || !isStarMilestone(milestone)) {
-      return new Response("Repository has not reached this milestone", { status: 409 });
+      return new Response("Repository has not reached this milestone", {
+        status: 409,
+        headers: { "Cache-Control": "private, no-store" },
+      });
     }
     const svg = renderCertificate({
       fullName: analysis.repository.fullName,
@@ -48,9 +54,18 @@ export async function GET(
     });
   } catch (error) {
     if (error instanceof PublicRepoNotFoundError)
-      return new Response("Repository not found or private", { status: 404 });
+      return new Response("Repository not found or private", {
+        status: 404,
+        headers: { "Cache-Control": "private, no-store" },
+      });
     if (error instanceof PublicRepoRateLimitError)
-      return new Response("GitHub rate limit reached", { status: 503 });
-    return new Response("Certificate temporarily unavailable", { status: 503 });
+      return new Response("GitHub rate limit reached", {
+        status: 503,
+        headers: { "Cache-Control": "private, no-store" },
+      });
+    return new Response("Certificate temporarily unavailable", {
+      status: 503,
+      headers: { "Cache-Control": "private, no-store" },
+    });
   }
 }

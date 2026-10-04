@@ -91,7 +91,7 @@ export default function ShareActions({
           Copy Markdown card
         </Button>
         {milestone && milestonePath && (
-          <Button asChild type="button" variant="outline">
+          <Button asChild variant="outline">
             <a
               href={`/api/certificate/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}?milestone=${milestone}`}
               download

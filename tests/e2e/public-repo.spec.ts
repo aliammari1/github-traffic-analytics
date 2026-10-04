@@ -48,6 +48,12 @@ test.describe("Public Repository Growth Intelligence", () => {
     await expect(page.getByRole("button", { name: "Copy link" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Copy Markdown card" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Copy 100k milestone card" })).toBeVisible();
+    const certificateLink = page.getByRole("link", { name: "Download milestone certificate" });
+    await expect(certificateLink).toBeVisible();
+    await expect(certificateLink).toHaveAttribute(
+      "href",
+      "/api/certificate/vercel/next.js?milestone=100000"
+    );
     const growthCard = page.locator('img[src*="/api/card/vercel/next.js"]');
     await expect(growthCard).toBeVisible();
     await page.getByLabel("Card style").selectOption("sparkline");
