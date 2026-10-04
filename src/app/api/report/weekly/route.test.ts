@@ -8,13 +8,17 @@ const traffic = vi.fn();
 const analyze = vi.fn();
 vi.mock("@/lib/server-auth", () => ({ getServerAuth: (...args: unknown[]) => auth(...args) }));
 vi.mock("@/lib/d1", () => ({ getD1: () => d1() }));
-vi.mock("@/lib/github", () => ({
-  GitHubService: class {
-    getTrafficViews(...args: unknown[]) {
-      return traffic(...args);
-    }
-  },
-}));
+vi.mock("@/lib/github", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/github")>();
+  return {
+    ...actual,
+    GitHubService: class {
+      getTrafficViews(...args: unknown[]) {
+        return traffic(...args);
+      }
+    },
+  };
+});
 vi.mock("@/lib/github-public", () => ({
   publicGitHub: { analyzePublicRepository: (...args: unknown[]) => analyze(...args) },
 }));

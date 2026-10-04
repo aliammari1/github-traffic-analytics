@@ -67,6 +67,12 @@ export default function HomePage() {
               >
                 Compare
               </Link>
+              <Link
+                href="/app/setup"
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Install App
+              </Link>
               {session && (
                 <Link
                   href="/repositories"

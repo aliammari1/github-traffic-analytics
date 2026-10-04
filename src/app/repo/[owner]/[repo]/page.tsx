@@ -32,6 +32,9 @@ import ShareActions from "@/components/ShareActions";
 import HistoricalTraffic from "@/components/HistoricalTraffic";
 import InsightsPanel from "@/components/InsightsPanel";
 import WeeklyReportPreview from "@/components/WeeklyReportPreview";
+import WeeklyDigestSettings from "@/components/WeeklyDigestSettings";
+import GitHubReportSettings from "@/components/GitHubReportSettings";
+import WebhookAlertSettings from "@/components/WebhookAlertSettings";
 import AnomalyList from "@/components/AnomalyList";
 import type { PublicRepoAnalysis } from "@/lib/github-public";
 import { calculateReleaseImpact } from "@/lib/analytics";
@@ -986,7 +989,22 @@ export default function RepositoryAnalyticsPage({
         >
           {hasPrivateAccess && privateTraffic ? (
             <>
+              <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-card p-5">
+                <div>
+                  <h2 className="font-semibold">Keep traffic history automatically</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Install the GitHub App and select repositories to start daily archiving with
+                    short-lived tokens.
+                  </p>
+                </div>
+                <Button asChild variant="outline">
+                  <Link href="/app/setup">Set up GitHub App</Link>
+                </Button>
+              </div>
               <WeeklyReportPreview owner={owner} repo={repo} />
+              <WeeklyDigestSettings owner={owner} repo={repo} />
+              <GitHubReportSettings owner={owner} repo={repo} />
+              <WebhookAlertSettings owner={owner} repo={repo} />
               <InsightsPanel
                 payload={{
                   repoCount: 1,

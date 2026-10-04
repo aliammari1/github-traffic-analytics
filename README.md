@@ -90,7 +90,7 @@ You can also embed the classic **total views badge** that counts traffic accumul
 | **Release impact window analysis**       |   ✅ 14d before vs. 14d after   |         ❌ None          |     ❌ None      |      ❌ None       |
 | **Multi-repository comparison**          |  ✅ Side-by-side (`/compare`)   |   ❌ Single repo only    |     ❌ None      |   ✅ Stars only    |
 | **Embeddable README growth card**        |  ✅ Dynamic SVG (`/api/card`)   |         ❌ None          | ✅ Activity card |   ✅ Stars chart   |
-| **Preserves traffic beyond 14 days**     |  ✅ Indefinite (D1 snapshots)   | ❌ Deleted after 14 days |  ❌ Images only  |   ❌ No traffic    |
+| **Preserves traffic beyond 14 days**     |     ✅ Captured D1 history      |   ❌ 14-day API window   |  ❌ Images only  |   ❌ No traffic    |
 | **Deterministic non-causal math**        | ✅ Pure TypeScript unit-tested  |         ❌ None          |     ❌ None      |      ❌ None       |
 | **Contextual AI interpretation**         | ✅ Precomputed telemetry briefs |         ❌ None          |     ❌ None      |      ❌ None       |
 | **100% Free & Self-Hostable**            |         ✅ MIT Licensed         |       ✅ Built-in        | ❌ SaaS pricing  |    ✅ Free tool    |
@@ -137,7 +137,27 @@ For two repositories, copy an embeddable comparison card directly from the Compa
 
 ### 5. Long-Term Traffic Retention (Bypassing GitHub's 14-Day Limit)
 
-GitHub deletes traffic metrics (views, clones, referrers, and paths) after 14 days. When repository owners authenticate and enable tracking, an automated daily Cloudflare Cron Worker saves snapshots into Cloudflare **D1**, archiving your traffic history indefinitely.
+GitHub's traffic API returns a recent 14-day window. After a maintainer enables tracking, a daily Cloudflare Cron Worker saves views and clones into **D1** from that point forward. It also captures GitHub's rolling top-referrer and popular-path lists, so later reports can compare observed source patterns. Retention depends on the deployment's D1 storage.
+
+Owners can preview a deterministic weekly report, export their stored traffic as CSV or JSON, and opt into a Monday email to their verified primary GitHub address when the deployment has email delivery configured. Missing days remain unavailable rather than appearing as zero.
+
+Installing the GitHub App and selecting repositories starts daily traffic archiving automatically. Scheduled collection then uses short-lived installation tokens scoped to those repositories; manual OAuth tracking remains available to deployments without an App.
+
+Maintainers can also opt into weekly or monthly reports posted as a GitHub Issue or Discussion. They choose the Discussion category when applicable. On public repositories, those posts expose the included traffic counts, so this delivery is always an explicit opt-in.
+
+Slack and Discord incoming webhook alerts can notify maintainers about observed star milestones, acceleration, slowdowns, referrer changes, and completed release windows. The webhook URL is encrypted before storage and alerts are sent only after an explicit opt-in.
+
+Prefer a self-hosted workflow? [GitHub Traffic Analytics Lite](docs/github-action.md) is a standalone Action that archives complete traffic days as JSON and CSV to a dedicated data branch, with no hosted database.
+
+The [public analytics API v1](docs/public-api.md) exposes compact repository growth, observed star history, release comparisons, anomalies, and multi-repository comparison for developer integrations.
+
+[`gh traffic`](integrations/gh-traffic/README.md) brings those public metrics and locally authenticated owner traffic into the terminal.
+
+The [analytics MCP server](integrations/mcp-server/README.md) offers focused growth and traffic tools to coding agents through a local stdio connection.
+
+The [Raycast extension](integrations/raycast/README.md) delivers keyboard-driven repository growth lookup, comparison, and README card copying on macOS and Windows.
+
+Maintainers can also download verified, shareable SVG milestone certificates directly from the repository report.
 
 ### 6. Contextual AI Actions (Explains Math, Never Hallucinates)
 
@@ -227,7 +247,7 @@ The application runs on Cloudflare Workers with a D1 database:
 
 - **Workers**: Next.js 16 via `@opennextjs/cloudflare`
 - **D1 Database**: Serverless SQLite for long-term daily snapshots
-- **Cron Worker**: Scheduled daily execution (`worker/snapshot.ts`)
+- **Cron Worker**: Daily capture and hourly timezone-aware digest checks (`worker/snapshot.ts`)
 
 Build with `pnpm cf:build`, then deploy with `pnpm exec opennextjs-cloudflare deploy`.
 Create D1, set Worker secrets, and deploy the separate snapshot Worker as described

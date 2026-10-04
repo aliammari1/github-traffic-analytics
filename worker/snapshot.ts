@@ -14,20 +14,21 @@
  */
 import * as Sentry from "@sentry/cloudflare";
 import { upsertDailyCounts, toDayKey, type D1Database, type Metric } from "../src/lib/snapshots";
+import { runWeeklyDigests, type DigestEnv } from "./digest";
+import { runGitHubReports } from "./github-reports";
+import { runNotifications } from "./notifications";
+import { listTrackedRepositories, RepositoryTokenProvider } from "./repository-token";
+import { replaceSourceSnapshot } from "../src/lib/source-snapshots";
 
-export interface Env {
+export interface Env extends DigestEnv {
   DB: D1Database;
+  WEBHOOK_ENCRYPTION_KEY?: string;
+  GITHUB_APP_ID?: string;
+  GITHUB_APP_PRIVATE_KEY?: string;
   /** Optional Sentry DSN — when set, snapshot-cron failures are reported + alerted. */
   SENTRY_DSN?: string;
   /** Cloudflare deploy environment label for Sentry (e.g. "production"). */
   SENTRY_ENVIRONMENT?: string;
-}
-
-interface TrackedRepo {
-  owner_login: string;
-  repo_owner: string;
-  repo_name: string;
-  access_token: string;
 }
 
 interface GitHubTrafficResponse {
@@ -35,6 +36,13 @@ interface GitHubTrafficResponse {
   uniques: number;
   views?: Array<{ timestamp: string; count: number; uniques: number }>;
   clones?: Array<{ timestamp: string; count: number; uniques: number }>;
+}
+
+interface GitHubSourceResponse {
+  referrer?: string;
+  path?: string;
+  count: number;
+  uniques: number;
 }
 
 async function fetchTraffic(
@@ -61,21 +69,60 @@ async function fetchTraffic(
   return (await res.json()) as GitHubTrafficResponse;
 }
 
+async function fetchSources(
+  token: string,
+  owner: string,
+  repo: string,
+  kind: "referrer" | "path"
+): Promise<Array<{ name: string; count: number; uniques: number }> | null> {
+  const endpoint = kind === "referrer" ? "referrers" : "paths";
+  const response = await fetch(
+    `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/traffic/popular/${endpoint}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json",
+        "User-Agent": "github-traffic-analytics-snapshot",
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+    }
+  );
+  if (!response.ok) {
+    console.error(`GitHub ${kind} fetch failed for ${owner}/${repo}: ${response.status}`);
+    return null;
+  }
+  const data = (await response.json()) as GitHubSourceResponse[];
+  return data
+    .map((item) => ({
+      name: kind === "referrer" ? (item.referrer ?? "") : (item.path ?? ""),
+      count: item.count,
+      uniques: item.uniques,
+    }))
+    .filter((item) => item.name.length > 0);
+}
+
 /** Snapshot all tracked repos. Exported for testability; called by the cron handler. */
-export async function runSnapshots(env: Env): Promise<{ repos: number; rows: number }> {
-  const { results } = await env.DB.prepare(
-    `SELECT owner_login, repo_owner, repo_name, access_token FROM tracked_repos`
-  ).all<TrackedRepo>();
+export async function runSnapshots(
+  env: Env,
+  now = new Date()
+): Promise<{ repos: number; rows: number; sources: number }> {
+  const results = await listTrackedRepositories(env.DB);
+  const tokens = new RepositoryTokenProvider(env);
 
   let rows = 0;
+  let sources = 0;
   for (const repo of results) {
+    let accessToken: string;
+    try {
+      accessToken = await tokens.get(repo);
+    } catch {
+      console.error("Snapshot authorization unavailable", {
+        repository: `${repo.repo_owner}/${repo.repo_name}`,
+      });
+      continue;
+    }
     for (const metric of ["views", "clones"] as Metric[]) {
-      const data = await fetchTraffic(
-        repo.access_token,
-        repo.repo_owner,
-        repo.repo_name,
-        metric
-      );
+      const data = await fetchTraffic(accessToken, repo.repo_owner, repo.repo_name, metric);
       if (!data) continue;
 
       const series = metric === "views" ? data.views : data.clones;
@@ -93,15 +140,79 @@ export async function runSnapshots(env: Env): Promise<{ repos: number; rows: num
         points,
       });
     }
+    for (const kind of ["referrer", "path"] as const) {
+      const observed = await fetchSources(accessToken, repo.repo_owner, repo.repo_name, kind);
+      if (!observed) continue;
+      await replaceSourceSnapshot(env.DB, {
+        ownerLogin: repo.owner_login,
+        repoOwner: repo.repo_owner,
+        repoName: repo.repo_name,
+        kind,
+        capturedDay: now.toISOString().slice(0, 10),
+        sources: observed,
+      });
+      sources += observed.length;
+    }
   }
-  return { repos: results.length, rows };
+  return { repos: results.length, rows, sources };
 }
 
 const handler = {
-  async scheduled(_event: unknown, env: Env, ctx: { waitUntil(p: Promise<unknown>): void }) {
+  async scheduled(
+    event: { cron: string; scheduledTime: number },
+    env: Env,
+    ctx: { waitUntil(p: Promise<unknown>): void }
+  ) {
+    if (event.cron === "0 * * * *") {
+      ctx.waitUntil(
+        Promise.allSettled([
+          runWeeklyDigests(env, new Date(event.scheduledTime)),
+          runGitHubReports(env, new Date(event.scheduledTime)),
+        ])
+          .then(([email, github]) => {
+            if (email.status === "rejected") throw email.reason;
+            if (github.status === "rejected") throw github.reason;
+            const result = email.value;
+            console.log(
+              `Weekly digest run: ${result.due} due, ${result.sent} sent, ${result.failed} failed, ${result.revoked} access revoked`
+            );
+            const reports = github.value;
+            console.log(
+              `GitHub report run: ${reports.due} due, ${reports.sent} sent, ${reports.failed} failed, ${reports.revoked} access revoked`
+            );
+            if (result.failed || reports.failed)
+              throw new Error(
+                `${result.failed} emails and ${reports.failed} GitHub reports failed`
+              );
+          })
+          .catch((error) => {
+            Sentry.captureException(error, { tags: { job: "scheduled-reports" } });
+            throw error;
+          })
+      );
+      return;
+    }
     ctx.waitUntil(
-      runSnapshots(env)
-        .then((r) => console.log(`Snapshot run complete: ${r.repos} repos, ${r.rows} rows`))
+      runSnapshots(env, new Date(event.scheduledTime))
+        .then(async (r) => {
+          console.log(
+            `Snapshot run complete: ${r.repos} repos, ${r.rows} traffic rows, ${r.sources} source rows`
+          );
+          if (env.WEBHOOK_ENCRYPTION_KEY) {
+            try {
+              const alerts = await runNotifications(env, new Date(event.scheduledTime));
+              console.log(
+                `Alert run: ${alerts.repos} repos, ${alerts.sent} sent, ${alerts.failed} failed`
+              );
+              if (alerts.failed) throw new Error(`${alerts.failed} alert deliveries failed`);
+            } catch (error) {
+              Sentry.captureException(error, { tags: { job: "daily-alerts" } });
+              console.error("Daily alert run failed", {
+                reason: error instanceof Error ? error.name : "unknown",
+              });
+            }
+          }
+        })
         .catch((err) => {
           // The cron is the headline feature (it beats GitHub's 14-day window). A
           // silent failure means history quietly stops accumulating, so surface it

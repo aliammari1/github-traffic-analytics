@@ -32,6 +32,12 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm format:check
+      - name: Verify Raycast extension typecheck
+        run: |
+          cd integrations/raycast
+          pnpm install --ignore-workspace --frozen-lockfile --ignore-scripts
+          pnpm exec tsc --noEmit
+          cd ../..
 
   test:
     name: Unit tests & coverage

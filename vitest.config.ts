@@ -18,7 +18,7 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
     // Playwright specs live in tests/e2e and are run by `playwright test`, not vitest.
-    include: ["src/**/*.test.{ts,tsx}", "tests/unit/**/*.test.{ts,tsx}"],
+    include: ["src/**/*.test.{ts,tsx}", "tests/unit/**/*.test.{ts,tsx}", "worker/**/*.test.ts"],
     exclude: ["node_modules", ".next", ".open-next", "tests/e2e/**"],
     coverage: {
       provider: "v8",
@@ -31,6 +31,9 @@ export default defineConfig({
         "src/lib/anomalies.ts",
         "src/lib/history-export.ts",
         "src/lib/weekly-report.ts",
+        "src/lib/digest-schedule.ts",
+        "src/lib/report-delivery.ts",
+        "src/lib/source-snapshots.ts",
         "src/lib/github-public.ts",
         "src/lib/github.ts",
         "src/lib/insights.ts",
@@ -40,6 +43,7 @@ export default defineConfig({
         "src/components/TrafficDashboard.tsx",
         "src/components/AnomalyList.tsx",
         "src/components/WeeklyReportPreview.tsx",
+        "src/components/WeeklyDigestSettings.tsx",
         "src/components/RepositorySelector.tsx",
         "src/components/InsightsPanel.tsx",
         "src/app/api/traffic/route.ts",
@@ -49,7 +53,10 @@ export default defineConfig({
         "src/app/api/snapshots/route.ts",
         "src/app/api/snapshots/export/route.ts",
         "src/app/api/report/weekly/route.ts",
+        "src/app/api/digest/preferences/route.ts",
         "src/app/api/track/route.ts",
+        "worker/digest.ts",
+        "worker/snapshot.ts",
       ],
       exclude: [
         "src/**/*.test.{ts,tsx}",

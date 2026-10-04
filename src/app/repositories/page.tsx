@@ -103,6 +103,9 @@ export default function RepositoriesPage() {
             <span className="font-semibold">Repositories</span>
           </div>
           <div className="flex items-center gap-4">
+            <Button asChild variant="outline" size="sm">
+              <Link href="/app/setup">Install GitHub App</Link>
+            </Button>
             <span className="text-sm text-muted-foreground">{session.user?.name}</span>
             {session.user?.image && (
               <Image

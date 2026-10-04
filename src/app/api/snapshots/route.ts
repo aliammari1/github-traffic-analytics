@@ -49,6 +49,25 @@ export async function GET(request: NextRequest) {
     fromDay,
     toDay,
   });
-
-  return NextResponse.json({ history: mergeHistory(rows) });
+  const [{ results: app }, { results: manual }] = await Promise.all([
+    db
+      .prepare(
+        `SELECT 1 FROM app_tracked_repos WHERE owner_login = ? AND repo_owner = ? AND repo_name = ? LIMIT 1`
+      )
+      .bind(serverAuth.userId, repoOwner, repoName)
+      .all<{ "1": number }>(),
+    db
+      .prepare(
+        `SELECT 1 FROM tracked_repos WHERE owner_login = ? AND repo_owner = ? AND repo_name = ? LIMIT 1`
+      )
+      .bind(serverAuth.userId, repoOwner, repoName)
+      .all<{ "1": number }>(),
+  ]);
+  return NextResponse.json(
+    {
+      history: mergeHistory(rows),
+      trackingSource: app.length ? "app" : manual.length ? "oauth" : "none",
+    },
+    { headers: { "cache-control": "private, no-store" } }
+  );
 }

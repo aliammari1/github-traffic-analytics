@@ -10,13 +10,26 @@ vi.mock("@/lib/server-auth", () => ({
 const getD1Mock = vi.fn();
 vi.mock("@/lib/d1", () => ({ getD1: () => getD1Mock() }));
 
+const trafficViewsMock = vi.fn();
+vi.mock("@/lib/github", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/github")>();
+  return {
+    ...actual,
+    GitHubService: class {
+      getTrafficViews(...args: unknown[]) {
+        return trafficViewsMock(...args);
+      }
+    },
+  };
+});
+
 import { POST } from "./route";
 
 function postReq(body: unknown) {
   return new NextRequest(
     new Request("http://x/api/track", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", origin: "http://x" },
       body: JSON.stringify(body),
     })
   );
@@ -26,6 +39,7 @@ describe("POST /api/track", () => {
   beforeEach(() => {
     serverAuthMock.mockReset();
     getD1Mock.mockReset();
+    trafficViewsMock.mockReset().mockResolvedValue({ count: 1 });
   });
 
   it("returns 401 when unauthenticated", async () => {
@@ -50,12 +64,13 @@ describe("POST /api/track", () => {
   it("upserts the tracked repo and returns tracked:true", async () => {
     serverAuthMock.mockResolvedValue({ accessToken: "tok", userId: "123" });
     const run = vi.fn().mockResolvedValue({});
-    const bind = vi.fn().mockReturnValue({ run });
+    const all = vi.fn().mockResolvedValue({ results: [] });
+    const bind = vi.fn().mockReturnValue({ run, all });
     getD1Mock.mockResolvedValue({ prepare: vi.fn().mockReturnValue({ bind }) });
 
     const res = await POST(postReq({ owner: "o", repo: "r" }));
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ tracked: true });
+    expect(await res.json()).toEqual({ tracked: true, source: "oauth" });
     expect(bind).toHaveBeenCalledWith("123", "o", "r", "tok");
   });
 });

@@ -150,6 +150,31 @@ test("owner previews a weekly report with honest missing metrics", async ({ page
   await expect(page.getByText("Unavailable", { exact: true })).toBeVisible();
 });
 
+test("owner opts into weekly email and can turn it off", async ({ page }) => {
+  await mockBackend(page);
+  let enabled = false;
+  await page.route("**/api/digest/preferences**", (route) => {
+    if (route.request().method() === "PUT") enabled = true;
+    if (route.request().method() === "DELETE") enabled = false;
+    return route.fulfill({
+      json: {
+        available: true,
+        enabled,
+        recipientEmail: enabled ? "owner@example.com" : null,
+        timeZone: "UTC",
+      },
+    });
+  });
+  await page.goto("/repositories");
+  await page.getByText("repo-one").click();
+  await page.getByRole("tab", { name: /Insights/i }).click();
+  await page.getByRole("textbox", { name: "Your timezone" }).fill("UTC");
+  await page.getByRole("button", { name: "Enable weekly email" }).click();
+  await expect(page.getByText("owner@example.com")).toBeVisible();
+  await page.getByRole("button", { name: "Turn off" }).click();
+  await expect(page.getByRole("status")).toContainText("Weekly email disabled.");
+});
+
 test("unauthenticated visitor sees the marketing sign-in page", async ({ page }) => {
   // NextAuth's client treats any non-null body as a session; return null for "signed out".
   await page.route("**/api/auth/session", (route) => route.fulfill({ json: null }));

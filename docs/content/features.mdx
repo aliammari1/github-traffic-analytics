@@ -38,6 +38,13 @@ and popular content paths. Requires `ANTHROPIC_API_KEY`; degrades gracefully (HT
 
 ## Daily snapshots (beyond GitHub's 14-day window)
 
+Maintainers can install the GitHub App, select repositories, and start daily
+tracking without a separate “Track this repo” step. The App uses short-lived
+installation tokens scoped to selected repositories. GitHub requires the App's
+Administration-read permission for traffic endpoints; optional Issue and
+Discussion report posting uses their respective write permissions. Existing
+manual OAuth tracking remains available for deployments without the App.
+
 GitHub only serves the last 14 days of traffic. A Cloudflare **Cron Worker**
 runs daily, reads the repos you've opted in to track, fetches their traffic, and
 upserts one row per day/metric into a **D1** database. The dashboard's
@@ -70,6 +77,7 @@ empty before tracking begins. The export route checks both your signed-in
 session and current GitHub traffic access, and restricts the D1 query to your
 own snapshot records. Use optional `from` and `to` ISO dates to narrow a large
 archive. The response is private and never cached publicly.
+
 ## Weekly report preview
 
 Authorized maintainers can preview the latest seven complete UTC days from the
@@ -78,9 +86,58 @@ unique clones, available public star growth, releases during the period, and
 deterministic growth signals. Traffic totals are shown only when all seven days
 were captured; partial data is labeled unavailable rather than zero. Public
 star metrics can be unavailable for private repositories or incomplete star
-history. The preview is not sent anywhere until a future delivery option is
-explicitly enabled.
+history. Previewing alone does not send email; delivery needs a separate opt-in.
 
+## Weekly email
+
+When delivery is configured by the deployment owner, authorized maintainers
+can opt in from the Insights tab. The recipient is their verified primary
+GitHub email; the app never accepts an arbitrary address. The hourly Cron
+Worker sends the report on Monday morning in the selected IANA timezone, with
+up to two retry hours. A delivery ledger and provider idempotency key prevent
+duplicate emails. Owners can turn email off from the same tab. The report uses
+completed UTC days and labels missing traffic or star data unavailable. It also
+uses stored GitHub top-referrer and popular-path captures when available.
+The Worker rechecks GitHub traffic access before delivery and removes the email
+subscription if that access has been revoked.
+Those source lists each cover GitHub's rolling 14-day window; comparing two
+captures about a week apart describes a share change, not a precise weekly
+referral count or proof that an external post caused growth.
+
+## GitHub Issue and Discussion reports
+
+Traffic-authorized maintainers can explicitly enable a weekly or monthly
+report in the repository Insights tab. Weekly reports compare two complete
+seven-day windows. Monthly delivery runs on the first day of the month and
+compares rolling 30-day windows. Both arrive at 9 a.m. in the chosen IANA
+timezone. Discussion delivery requires choosing an existing category; a
+repository without Discussions can use Issues instead. A delivery ledger and
+GitHub lookup guard against duplicate posts. The setting can be removed at
+any time, and access is rechecked before posting.
+
+**Public Issues and Discussions expose the included traffic counts to anyone
+who can view the repository.** Enable this only when that visibility is
+acceptable. Partial history is labeled unavailable.
+
+## Slack and Discord alerts
+
+Authorized maintainers can opt into incoming webhook notifications for
+supported star milestones, growth acceleration or slowdown, captured
+top-referrer increases, and a release impact comparison when a complete
+14-day post-release star window exists. Each event needs comparable captured
+data; missing observations never generate zero-growth alerts. Referrer lists
+cover overlapping rolling 14-day windows and do not identify an external
+post as the cause of growth. Webhook URLs are encrypted in D1, never returned
+by the settings API, and can be tested or removed from the Insights tab.
+
+## Standalone GitHub Action
+
+GitHub Traffic Analytics Lite archives a repository's own completed daily
+traffic records into a dedicated branch as JSON and CSV, and writes a short
+Markdown summary. It does not require Cloudflare or the hosted dashboard.
+The workflow needs a separate token with GitHub Administration-read permission
+for traffic; the normal workflow token cannot request that permission. See
+the [setup guide](https://github.com/aliammari1/github-traffic-analytics/blob/main/docs/github-action.md).
 
 ## Traffic badge (the viral loop)
 

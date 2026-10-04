@@ -44,9 +44,106 @@ pnpm exec opennextjs-cloudflare deploy  # deploy the build above
 wrangler deploy --config wrangler.snapshot.jsonc
 ```
 
-It runs daily at 06:00 UTC (`triggers.crons`).
+It captures traffic daily at 06:00 UTC (`triggers.crons`) and checks opt-in
+weekly email schedules hourly. Users must opt in to weekly email separately.
 The Cron Worker uses the same D1 database. Users must opt in to tracking before
 it captures their repository traffic.
+
+### Configure weekly email
+
+The D1 schema creates `weekly_digest_preferences`, `report_deliveries`, and
+`traffic_source_snapshots` for top-referrer/path captures.
+Existing deployments can apply the additive migration before deploying:
+
+```bash
+wrangler d1 execute traffic_analytics --remote --file db/migrations/0002_weekly_digest.sql
+wrangler d1 execute traffic_analytics --remote --file db/migrations/0003_github_reports.sql
+wrangler d1 execute traffic_analytics --remote --file db/migrations/0004_webhook_alerts.sql
+wrangler d1 execute traffic_analytics --remote --file db/migrations/0005_github_app.sql
+```
+
+Verify a sender domain with Resend, then set these secrets on the **snapshot
+Worker** (the worker that also runs digest checks):
+
+```bash
+wrangler secret put RESEND_API_KEY --config wrangler.snapshot.jsonc
+wrangler secret put REPORT_FROM_EMAIL --config wrangler.snapshot.jsonc
+```
+
+`REPORT_FROM_EMAIL` must be an address on that verified domain. Once both are
+configured, set `DIGEST_EMAIL_ENABLED=true` on the **application Worker** and
+redeploy it. Keep the flag false until mail delivery is ready. Opt-in saves the
+verified primary GitHub email, enables daily tracking for that repository, and
+sends at the first hourly check in the user's Monday 09:00–09:59 local window.
+The 10:00 and 11:00 checks retry failed deliveries. Every send has a D1
+delivery claim and a provider idempotency key. UTC reporting windows include
+only complete days, so the ending date can differ by timezone.
+For a fork, also set `SITE_URL` on the snapshot Worker to your own HTTPS origin;
+the default links to the production deployment shown above.
+
+### Configure Slack and Discord alerts
+
+Webhook URLs are encrypted before storage in D1. Generate one 32-byte base64
+key with `openssl rand -base64 32`, keep it in your secret manager, and set
+the **same value** on both Workers:
+
+```bash
+wrangler secret put WEBHOOK_ENCRYPTION_KEY
+wrangler secret put WEBHOOK_ENCRYPTION_KEY --config wrangler.snapshot.jsonc
+```
+
+The application Worker uses the key to save and test incoming webhook URLs;
+the snapshot Worker uses it for daily delivery. Without the key, the alert
+settings UI remains unavailable. Rotating the key requires re-entering saved
+webhooks. Each maintainer chooses a Slack or Discord incoming webhook and the
+events they want. The Worker checks traffic access before processing alerts.
+No alert is sent until enough comparable observations exist.
+
+### Configure the GitHub App
+
+Register a GitHub App under your GitHub account or organization. Its homepage
+is `https://github-traffic-analytics.ali-ammari.workers.dev`, its setup URL is
+`https://github-traffic-analytics.ali-ammari.workers.dev/app/setup`, and its
+webhook URL is
+`https://github-traffic-analytics.ali-ammari.workers.dev/api/github-app/webhook`.
+Set a high-entropy webhook secret. Enable **Redirect on update** for the setup
+URL so selecting more repositories returns to the setup page. For a fork,
+replace the host with its own public HTTPS origin.
+
+Grant repository **Administration: read** for [GitHub traffic endpoints](https://docs.github.com/en/rest/metrics/traffic),
+**Issues: write** for opted-in Issue reports, and **Discussions: write** for
+opted-in Discussion reports. Metadata read is implicit. Subscribe to
+`installation`, `repository`, and `release` events;
+[`installation_repositories`](https://docs.github.com/en/webhooks/webhook-events-and-payloads#installation_repositories) is delivered automatically by GitHub Apps. The
+App does not need Contents or webhook administration permissions. GitHub's
+traffic endpoints require Administration read, which is more sensitive than
+the name suggests; explain this clearly on the App installation page.
+
+Configure these secrets on the **application Worker**:
+
+```bash
+wrangler secret put GITHUB_APP_ID
+wrangler secret put GITHUB_APP_SLUG
+wrangler secret put GITHUB_APP_PRIVATE_KEY
+wrangler secret put GITHUB_APP_WEBHOOK_SECRET
+```
+
+Configure the same App ID and private key on the **snapshot Worker**:
+
+```bash
+wrangler secret put GITHUB_APP_ID --config wrangler.snapshot.jsonc
+wrangler secret put GITHUB_APP_PRIVATE_KEY --config wrangler.snapshot.jsonc
+```
+
+The private key is the PEM file downloaded from GitHub; enter its complete
+contents. App installation webhooks use GitHub's [HMAC-SHA256 signature](https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries) and are replay-guarded.
+The signed installing account starts tracking selected repositories
+automatically. The setup page can link an installation to a different signed-in
+maintainer only after checking that maintainer's GitHub traffic access to each
+selected repository. App-linked repositories use repository-scoped tokens that
+expire after one hour; the Worker creates fresh tokens for each scheduled run.
+Removing a repository or uninstalling the App stops new App-backed snapshots.
+Historical snapshots remain scoped to the account that captured them.
 
 ## CI deploy (gated)
 
@@ -60,5 +157,13 @@ repository variable `ENABLE_CF_DEPLOY` is `true` and these secrets are set:
 | `NEXTAUTH_SECRET`, `NEXTAUTH_URL`              | NextAuth              |
 | `GH_OAUTH_CLIENT_ID`, `GH_OAUTH_CLIENT_SECRET` | GitHub OAuth          |
 | `ANTHROPIC_API_KEY`                            | AI insights           |
+
+Weekly email also needs `RESEND_API_KEY` and `REPORT_FROM_EMAIL` configured as
+secrets on the snapshot Worker, plus `DIGEST_EMAIL_ENABLED=true` on the app
+Worker. These are optional; without them the email opt-in stays disabled.
+
+Slack and Discord alerts additionally require `WEBHOOK_ENCRYPTION_KEY` on
+both Workers. GitHub Issue and Discussion reports use the maintainer's current
+GitHub OAuth grant and require no external message provider.
 
 Without them the deploy job is skipped — forks and CI never attempt a deploy.
