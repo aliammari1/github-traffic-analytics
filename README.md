@@ -151,6 +151,8 @@ Prefer a self-hosted workflow? [GitHub Traffic Analytics Lite](docs/github-actio
 
 The [public analytics API v1](docs/public-api.md) exposes compact repository growth, observed star history, release comparisons, anomalies, and multi-repository comparison for developer integrations.
 
+[`gh traffic`](integrations/gh-traffic/README.md) brings those public metrics and locally authenticated owner traffic into the terminal.
+
 ### 6. Contextual AI Actions (Explains Math, Never Hallucinates)
 
 No generic AI chatbots. Maintainers can trigger contextual briefings:

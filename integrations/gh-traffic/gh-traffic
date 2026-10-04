@@ -1,0 +1,249 @@
+#!/usr/bin/env node
+// SPDX-License-Identifier: MIT
+import { execFileSync } from "node:child_process";
+
+const BASE = (
+  process.env.GTA_API_BASE || "https://github-traffic-analytics.ali-ammari.workers.dev/api/v1"
+).replace(/\/$/, "");
+const DAY_MS = 86_400_000;
+
+class MissingArchiveError extends Error {}
+
+function usage() {
+  return `gh traffic — repository growth and owner traffic
+
+Public, no product login:
+  gh traffic view OWNER/REPO [--json]
+  gh traffic stars OWNER/REPO [--days 90] [--json]
+  gh traffic release OWNER/REPO TAG [--json]
+  gh traffic compare OWNER/REPO OTHER/REPO [MORE/REPO ...] [--json]
+
+Owner traffic (uses your local gh authentication):
+  gh traffic report OWNER/REPO [--json]
+  gh traffic export OWNER/REPO [--format csv|json] [--source auto|archive|live]
+
+Export uses the traffic-history branch when present. Live GitHub traffic covers
+only the current API window. Set GTA_API_BASE to use another deployment.`;
+}
+
+function repository(value) {
+  if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(value || ""))
+    throw new Error("Use OWNER/REPO for each repository");
+  return value;
+}
+
+function parse(args) {
+  const options = { json: false, days: 90, format: "csv", source: "auto" };
+  const positionals = [];
+  for (let index = 0; index < args.length; index++) {
+    const arg = args[index];
+    if (arg === "--json") options.json = true;
+    else if (["--days", "--format", "--source"].includes(arg)) {
+      const value = args[++index];
+      if (!value) throw new Error(`${arg} requires a value`);
+      options[arg.slice(2)] = value;
+    } else if (arg.startsWith("--")) throw new Error(`Unknown option: ${arg}`);
+    else positionals.push(arg);
+  }
+  options.days = Number(options.days);
+  if (!Number.isInteger(options.days) || options.days < 1 || options.days > 180)
+    throw new Error("--days must be between 1 and 180");
+  if (!["csv", "json"].includes(options.format)) throw new Error("--format must be csv or json");
+  if (!["auto", "archive", "live"].includes(options.source))
+    throw new Error("--source must be auto, archive, or live");
+  return { options, positionals };
+}
+
+function repoPath(fullName) {
+  return fullName.split("/").map(encodeURIComponent).join("/");
+}
+
+async function publicApi(path) {
+  const response = await fetch(`${BASE}${path}`, {
+    headers: { Accept: "application/json", "User-Agent": "gh-traffic" },
+    signal: AbortSignal.timeout(20_000),
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(body.error || `Public API returned ${response.status}`);
+  return body;
+}
+
+function ghApi(path) {
+  try {
+    return JSON.parse(
+      execFileSync("gh", ["api", path, "-H", "Accept: application/vnd.github+json"], {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+        timeout: 20_000,
+      })
+    );
+  } catch (cause) {
+    const stderr = String(cause?.stderr ?? "");
+    if (/HTTP 404|Not Found/i.test(stderr)) throw new MissingArchiveError("Archive not found");
+    const status = cause?.status;
+    throw new Error(
+      `GitHub CLI could not read ${path.split("?")[0]}${status ? ` (exit ${status})` : ""}. Check gh auth status and repository traffic access.`
+    );
+  }
+}
+
+function liveTraffic(fullName) {
+  const path = `repos/${repoPath(fullName)}/traffic`;
+  const views = ghApi(`${path}/views?per=day`);
+  const clones = ghApi(`${path}/clones?per=day`);
+  const rows = new Map();
+  for (const [metric, series] of [
+    ["views", views.views],
+    ["clones", clones.clones],
+  ]) {
+    if (!Array.isArray(series)) throw new Error(`GitHub omitted the ${metric} series`);
+    for (const item of series) {
+      const day = item.timestamp?.slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day || "")) continue;
+      rows.set(day, {
+        ...(rows.get(day) || { day }),
+        [metric]: { count: item.count, uniques: item.uniques },
+      });
+    }
+  }
+  return [...rows.values()].sort((a, b) => a.day.localeCompare(b.day));
+}
+
+function archivedTraffic(fullName) {
+  const path = `repos/${repoPath(fullName)}/contents/data/daily.json?ref=traffic-history`;
+  const response = ghApi(path);
+  const decoded = Buffer.from(response.content.replace(/\s/g, ""), "base64").toString("utf8");
+  const archive = JSON.parse(decoded);
+  if (archive.version !== 1 || archive.repository !== fullName || !Array.isArray(archive.daily))
+    throw new Error("Archive format or repository does not match");
+  return archive.daily;
+}
+
+function ownerTraffic(fullName, source) {
+  if (source === "live") return { source: "live", daily: liveTraffic(fullName) };
+  try {
+    return { source: "archive", daily: archivedTraffic(fullName) };
+  } catch (cause) {
+    if (source === "archive" || !(cause instanceof MissingArchiveError)) throw cause;
+    process.stderr.write("Archive unavailable; using GitHub's current traffic window.\n");
+    return { source: "live", daily: liveTraffic(fullName) };
+  }
+}
+
+function weeklyTotal(rows, metric, endingOn) {
+  const byDay = new Map(rows.map((row) => [row.day, row]));
+  const end = Date.parse(`${endingOn}T00:00:00Z`);
+  let total = 0;
+  for (let offset = 0; offset < 7; offset++) {
+    const day = new Date(end - offset * DAY_MS).toISOString().slice(0, 10);
+    const value = byDay.get(day)?.[metric]?.count;
+    if (!Number.isInteger(value)) return null;
+    total += value;
+  }
+  return total;
+}
+
+const display = (value) => (value === null || value === undefined ? "unavailable" : String(value));
+
+function csv(rows) {
+  return (
+    [
+      "day,views,view_uniques,clones,clone_uniques",
+      ...rows.map((row) =>
+        [
+          row.day,
+          row.views?.count ?? "",
+          row.views?.uniques ?? "",
+          row.clones?.count ?? "",
+          row.clones?.uniques ?? "",
+        ].join(",")
+      ),
+    ].join("\n") + "\n"
+  );
+}
+
+async function main() {
+  const [command, ...args] = process.argv.slice(2);
+  if (!command || command === "help" || command === "--help" || command === "-h") {
+    console.log(usage());
+    return;
+  }
+  const { options, positionals } = parse(args);
+  if (command === "compare") {
+    if (positionals.length < 2 || positionals.length > 4)
+      throw new Error("Compare two to four repositories");
+    const repos = positionals.map(repository);
+    const data = await publicApi(`/compare?repos=${repos.map(encodeURIComponent).join(",")}`);
+    if (options.json) console.log(JSON.stringify(data, null, 2));
+    else {
+      console.log("REPOSITORY\tSTARS\t7D\t30D\tMOMENTUM");
+      for (const item of data.repositories)
+        console.log(
+          `${item.repository.fullName}\t${item.repository.stars}\t${display(item.growth.stars7d)}\t${display(item.growth.stars30d)}\t${display(item.growth.momentum?.score)}`
+        );
+    }
+    return;
+  }
+  if (positionals.length < 1) throw new Error("Choose a repository as OWNER/REPO");
+  const fullName = repository(positionals[0]);
+  const path = `/repositories/${repoPath(fullName)}`;
+  if (command === "view") {
+    const data = await publicApi(path);
+    if (options.json) console.log(JSON.stringify(data, null, 2));
+    else
+      console.log(
+        `${data.repository.fullName}\nStars: ${data.repository.stars}\n7-day growth: ${display(data.growth.stars7d)}\n30-day growth: ${display(data.growth.stars30d)}\nMomentum: ${display(data.growth.momentum?.score)}\n${data.repository.url}`
+      );
+  } else if (command === "stars") {
+    const data = await publicApi(`${path}?view=history&days=${options.days}`);
+    if (options.json) console.log(JSON.stringify(data, null, 2));
+    else {
+      console.log(`${data.repository} · observed star history`);
+      for (const item of data.points) console.log(`${item.day}\t${item.stars}`);
+    }
+  } else if (command === "release") {
+    if (positionals.length !== 2) throw new Error("Choose a release tag");
+    const data = await publicApi(`${path}?view=release&tag=${encodeURIComponent(positionals[1])}`);
+    if (options.json) console.log(JSON.stringify(data, null, 2));
+    else
+      console.log(
+        `${data.repository} · ${data.release.tagName}\nBefore: ${display(data.impact?.beforeStars)} stars\nAfter: ${display(data.impact?.afterStars)} stars\n${data.impact?.associationLabel || "Complete release window unavailable."}\nTiming association only; no causal claim.`
+      );
+  } else if (command === "report") {
+    const [growth, traffic] = await Promise.all([
+      publicApi(path),
+      Promise.resolve().then(() => ownerTraffic(fullName, options.source)),
+    ]);
+    const endingOn = new Date(Date.now() - DAY_MS).toISOString().slice(0, 10);
+    const report = {
+      repository: fullName,
+      endingOn,
+      source: traffic.source,
+      stars7d: growth.growth.stars7d,
+      views7d: weeklyTotal(traffic.daily, "views", endingOn),
+      clones7d: weeklyTotal(traffic.daily, "clones", endingOn),
+      latestRelease: growth.latestRelease,
+    };
+    if (options.json) console.log(JSON.stringify(report, null, 2));
+    else
+      console.log(
+        `${fullName} · traffic for seven complete UTC days ending ${endingOn}\nRecent 7-day stars (as of public API): ${display(report.stars7d)}\nViews: ${display(report.views7d)}\nClones: ${display(report.clones7d)}\nTraffic source: ${report.source}\n${report.latestRelease ? `Latest release: ${report.latestRelease.tagName}` : "No recent release"}`
+      );
+  } else if (command === "export") {
+    const traffic = ownerTraffic(fullName, options.source);
+    if (options.format === "json")
+      console.log(
+        JSON.stringify(
+          { version: 1, source: traffic.source, repository: fullName, daily: traffic.daily },
+          null,
+          2
+        )
+      );
+    else process.stdout.write(csv(traffic.daily));
+  } else throw new Error(`Unknown command: ${command}`);
+}
+
+main().catch((cause) => {
+  console.error(`gh traffic: ${cause instanceof Error ? cause.message : "Unexpected error"}`);
+  process.exitCode = 1;
+});
