@@ -10,11 +10,30 @@ function input(name, fallback = "") {
 }
 
 function apiPath(value) {
-  return value.split("/").map(encodeURIComponent).join("/");
+  if (typeof value !== "string" || value.includes("..")) {
+    throw new Error("Invalid API path segment");
+  }
+  return value
+    .split("/")
+    .filter(Boolean)
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+}
+
+function safeGitHubUrl(path) {
+  if (typeof path !== "string" || !path.startsWith("/") || path.includes("..")) {
+    throw new Error("Invalid GitHub API path");
+  }
+  const url = new URL(path, API);
+  if (url.origin !== "https://api.github.com") {
+    throw new Error("Invalid GitHub API origin");
+  }
+  return url;
 }
 
 async function github(path, token, options = {}) {
-  const response = await fetch(`${API}${path}`, {
+  const targetUrl = safeGitHubUrl(path);
+  const response = await fetch(targetUrl, {
     method: options.method || "GET",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -170,8 +189,8 @@ async function main() {
   const branch = input("branch", "traffic-history");
   const prefix = input("path_prefix", "data").replace(/^\/+|\/+$/g, "");
   const allowPublicArchive = input("allow_public_archive", "false") === "true";
-  if (!fullName || !/^[^/]+\/[^/]+$/.test(fullName))
-    throw new Error("GITHUB_REPOSITORY is missing");
+  if (!fullName || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(fullName) || fullName.includes(".."))
+    throw new Error("GITHUB_REPOSITORY is missing or invalid");
   if (!trafficToken || !githubToken)
     throw new Error("Both traffic_token and github_token are required");
   if (
