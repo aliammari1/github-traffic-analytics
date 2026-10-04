@@ -149,6 +149,8 @@ Slack and Discord incoming webhook alerts can notify maintainers about observed 
 
 Prefer a self-hosted workflow? [GitHub Traffic Analytics Lite](docs/github-action.md) is a standalone Action that archives complete traffic days as JSON and CSV to a dedicated data branch, with no hosted database.
 
+The [public analytics API v1](docs/public-api.md) exposes compact repository growth, observed star history, release comparisons, anomalies, and multi-repository comparison for developer integrations.
+
 ### 6. Contextual AI Actions (Explains Math, Never Hallucinates)
 
 No generic AI chatbots. Maintainers can trigger contextual briefings:

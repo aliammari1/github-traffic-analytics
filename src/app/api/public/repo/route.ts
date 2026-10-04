@@ -7,50 +7,13 @@ import {
   PublicRepoNotFoundError,
   PublicRepoRateLimitError,
 } from "@/lib/github-public";
+import { checkIpRateLimit, requesterIp } from "@/lib/public-rate-limit";
+export { checkIpRateLimit, resetIpRateLimit } from "@/lib/public-rate-limit";
 
 const querySchema = z.object({
   owner: z.string().min(1).max(100),
   repo: z.string().min(1).max(100),
 });
-
-// In-memory sliding-window IP rate limiter (60 requests per minute per IP)
-const ipRateLimit = new Map<string, number[]>();
-const MAX_RATE_LIMIT_ENTRIES = 5000;
-
-export function checkIpRateLimit(
-  ip: string,
-  maxRequests = 60,
-  windowMs = 60_000,
-  now = Date.now()
-): boolean {
-  const windowStart = now - windowMs;
-  let timestamps = ipRateLimit.get(ip);
-  if (!timestamps) {
-    if (ipRateLimit.size >= MAX_RATE_LIMIT_ENTRIES) {
-      for (const [key, times] of ipRateLimit.entries()) {
-        const valid = times.filter((t) => t > windowStart);
-        if (valid.length === 0) ipRateLimit.delete(key);
-        else ipRateLimit.set(key, valid);
-      }
-    }
-    timestamps = [];
-    ipRateLimit.set(ip, timestamps);
-  }
-
-  const recent = timestamps.filter((t) => t > windowStart);
-  if (recent.length >= maxRequests) {
-    ipRateLimit.set(ip, recent);
-    return false;
-  }
-
-  recent.push(now);
-  ipRateLimit.set(ip, recent);
-  return true;
-}
-
-export function resetIpRateLimit() {
-  ipRateLimit.clear();
-}
 
 /**
  * Public repository analysis endpoint.
@@ -58,10 +21,7 @@ export function resetIpRateLimit() {
  */
 export async function GET(request: NextRequest) {
   try {
-    const ip =
-      request.headers.get("cf-connecting-ip") ||
-      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-      "anonymous";
+    const ip = requesterIp(request.headers);
 
     if (!checkIpRateLimit(ip)) {
       return NextResponse.json(
