@@ -143,6 +143,8 @@ Owners can preview a deterministic weekly report, export their stored traffic as
 
 Maintainers can also opt into weekly or monthly reports posted as a GitHub Issue or Discussion. They choose the Discussion category when applicable. On public repositories, those posts expose the included traffic counts, so this delivery is always an explicit opt-in.
 
+Slack and Discord incoming webhook alerts can notify maintainers about observed star milestones, acceleration, slowdowns, referrer changes, and completed release windows. The webhook URL is encrypted before storage and alerts are sent only after an explicit opt-in.
+
 ### 6. Contextual AI Actions (Explains Math, Never Hallucinates)
 
 No generic AI chatbots. Maintainers can trigger contextual briefings:

@@ -16,10 +16,12 @@ import * as Sentry from "@sentry/cloudflare";
 import { upsertDailyCounts, toDayKey, type D1Database, type Metric } from "../src/lib/snapshots";
 import { runWeeklyDigests, type DigestEnv } from "./digest";
 import { runGitHubReports } from "./github-reports";
+import { runNotifications } from "./notifications";
 import { replaceSourceSnapshot } from "../src/lib/source-snapshots";
 
 export interface Env extends DigestEnv {
   DB: D1Database;
+  WEBHOOK_ENCRYPTION_KEY?: string;
   /** Optional Sentry DSN — when set, snapshot-cron failures are reported + alerted. */
   SENTRY_DSN?: string;
   /** Cloudflare deploy environment label for Sentry (e.g. "production"). */
@@ -188,11 +190,25 @@ const handler = {
     }
     ctx.waitUntil(
       runSnapshots(env, new Date(event.scheduledTime))
-        .then((r) =>
+        .then(async (r) => {
           console.log(
             `Snapshot run complete: ${r.repos} repos, ${r.rows} traffic rows, ${r.sources} source rows`
-          )
-        )
+          );
+          if (env.WEBHOOK_ENCRYPTION_KEY) {
+            try {
+              const alerts = await runNotifications(env, new Date(event.scheduledTime));
+              console.log(
+                `Alert run: ${alerts.repos} repos, ${alerts.sent} sent, ${alerts.failed} failed`
+              );
+              if (alerts.failed) throw new Error(`${alerts.failed} alert deliveries failed`);
+            } catch (error) {
+              Sentry.captureException(error, { tags: { job: "daily-alerts" } });
+              console.error("Daily alert run failed", {
+                reason: error instanceof Error ? error.name : "unknown",
+              });
+            }
+          }
+        })
         .catch((err) => {
           // The cron is the headline feature (it beats GitHub's 14-day window). A
           // silent failure means history quietly stops accumulating, so surface it

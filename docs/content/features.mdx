@@ -112,6 +112,17 @@ any time, and access is rechecked before posting.
 who can view the repository.** Enable this only when that visibility is
 acceptable. Partial history is labeled unavailable.
 
+## Slack and Discord alerts
+
+Authorized maintainers can opt into incoming webhook notifications for
+supported star milestones, growth acceleration or slowdown, captured
+top-referrer increases, and a release impact comparison when a complete
+14-day post-release star window exists. Each event needs comparable captured
+data; missing observations never generate zero-growth alerts. Referrer lists
+cover overlapping rolling 14-day windows and do not identify an external
+post as the cause of growth. Webhook URLs are encrypted in D1, never returned
+by the settings API, and can be tested or removed from the Insights tab.
+
 ## Traffic badge (the viral loop)
 
 Every tracked repo gets a public, embeddable SVG badge of its **total accumulated

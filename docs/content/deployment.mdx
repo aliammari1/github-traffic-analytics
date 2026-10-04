@@ -58,6 +58,7 @@ Existing deployments can apply the additive migration before deploying:
 ```bash
 wrangler d1 execute traffic_analytics --remote --file db/migrations/0002_weekly_digest.sql
 wrangler d1 execute traffic_analytics --remote --file db/migrations/0003_github_reports.sql
+wrangler d1 execute traffic_analytics --remote --file db/migrations/0004_webhook_alerts.sql
 ```
 
 Verify a sender domain with Resend, then set these secrets on the **snapshot
@@ -79,6 +80,24 @@ only complete days, so the ending date can differ by timezone.
 For a fork, also set `SITE_URL` on the snapshot Worker to your own HTTPS origin;
 the default links to the production deployment shown above.
 
+### Configure Slack and Discord alerts
+
+Webhook URLs are encrypted before storage in D1. Generate one 32-byte base64
+key with `openssl rand -base64 32`, keep it in your secret manager, and set
+the **same value** on both Workers:
+
+```bash
+wrangler secret put WEBHOOK_ENCRYPTION_KEY
+wrangler secret put WEBHOOK_ENCRYPTION_KEY --config wrangler.snapshot.jsonc
+```
+
+The application Worker uses the key to save and test incoming webhook URLs;
+the snapshot Worker uses it for daily delivery. Without the key, the alert
+settings UI remains unavailable. Rotating the key requires re-entering saved
+webhooks. Each maintainer chooses a Slack or Discord incoming webhook and the
+events they want. The Worker checks traffic access before processing alerts.
+No alert is sent until enough comparable observations exist.
+
 ## CI deploy (gated)
 
 `.github/workflows/deploy.yml` deploys on push to `main`, but only when the
@@ -95,5 +114,9 @@ repository variable `ENABLE_CF_DEPLOY` is `true` and these secrets are set:
 Weekly email also needs `RESEND_API_KEY` and `REPORT_FROM_EMAIL` configured as
 secrets on the snapshot Worker, plus `DIGEST_EMAIL_ENABLED=true` on the app
 Worker. These are optional; without them the email opt-in stays disabled.
+
+Slack and Discord alerts additionally require `WEBHOOK_ENCRYPTION_KEY` on
+both Workers. GitHub Issue and Discussion reports use the maintainer's current
+GitHub OAuth grant and require no external message provider.
 
 Without them the deploy job is skipped — forks and CI never attempt a deploy.
