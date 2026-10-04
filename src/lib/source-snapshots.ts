@@ -81,7 +81,7 @@ export async function getSourceWindows(
     const priorStart = new Date(Date.parse(`${currentDay}T00:00:00Z`) - 9 * DAY_MS)
       .toISOString()
       .slice(0, 10);
-    const previousDay = days.filter((day) => day >= priorStart && day <= priorEnd).at(-1);
+    const previousDay = days.findLast((day) => day >= priorStart && day <= priorEnd);
     const previous = previousDay
       ? rows
           .filter((row) => row.captured_day === previousDay)

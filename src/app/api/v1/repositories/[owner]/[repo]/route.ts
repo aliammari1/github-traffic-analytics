@@ -47,14 +47,21 @@ export async function GET(
     );
   try {
     const analysis = await publicGitHub.analyzePublicRepository(owner, repo);
-    const body =
-      view === "history"
-        ? publicStarHistory(analysis, days)
-        : view === "anomalies"
-          ? publicAnomalies(analysis)
-          : view === "release"
-            ? publicReleaseImpact(analysis, tag)
-            : publicGrowthSummary(analysis);
+    let body;
+    switch (view) {
+      case "history":
+        body = publicStarHistory(analysis, days);
+        break;
+      case "anomalies":
+        body = publicAnomalies(analysis);
+        break;
+      case "release":
+        body = publicReleaseImpact(analysis, tag);
+        break;
+      default:
+        body = publicGrowthSummary(analysis);
+        break;
+    }
     if (!body)
       return NextResponse.json(
         { error: "This release was not found in the available recent releases." },

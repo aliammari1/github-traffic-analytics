@@ -22,7 +22,10 @@ interface SavedWebhook {
 
 const defaultEvents: AlertEvent[] = ["star_milestone", "growth_acceleration"];
 
-export default function WebhookAlertSettings({ owner, repo }: { owner: string; repo: string }) {
+export default function WebhookAlertSettings({
+  owner,
+  repo,
+}: Readonly<{ owner: string; repo: string }>) {
   const query = `owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`;
   const endpoint = `/api/alerts/webhooks?${query}`;
   const [available, setAvailable] = useState(false);

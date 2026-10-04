@@ -3,7 +3,7 @@ import { Action, ActionPanel, Detail } from "@raycast/api";
 import { useEffect, useState } from "react";
 import { appBase, display, Growth, remember, summary } from "./api";
 
-export function GrowthDetail({ repository }: { repository: string }) {
+export function GrowthDetail({ repository }: Readonly<{ repository: string }>) {
   const [data, setData] = useState<Growth>();
   const [error, setError] = useState<string>();
 

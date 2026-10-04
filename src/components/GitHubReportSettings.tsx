@@ -12,7 +12,10 @@ interface Preference {
   timeZone: string | null;
 }
 
-export default function GitHubReportSettings({ owner, repo }: { owner: string; repo: string }) {
+export default function GitHubReportSettings({
+  owner,
+  repo,
+}: Readonly<{ owner: string; repo: string }>) {
   const query = `owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`;
   const endpoint = `/api/report/github/preferences?${query}`;
   const [preference, setPreference] = useState<Preference | null>(null);
@@ -176,7 +179,7 @@ export default function GitHubReportSettings({ owner, repo }: { owner: string; r
               className="flex min-w-40 flex-col gap-2 text-sm font-medium"
               htmlFor="github-report-category"
             >
-              Discussion category
+              <span>Discussion category</span>
               <select
                 id="github-report-category"
                 value={categoryId}
@@ -197,7 +200,7 @@ export default function GitHubReportSettings({ owner, repo }: { owner: string; r
             className="flex min-w-48 flex-col gap-2 text-sm font-medium"
             htmlFor="github-report-timezone"
           >
-            IANA timezone
+            <span>IANA timezone</span>
             <input
               id="github-report-timezone"
               value={timeZone}
@@ -238,11 +241,7 @@ export default function GitHubReportSettings({ owner, repo }: { owner: string; r
           {error}
         </p>
       )}
-      {message && (
-        <p role="status" className="mt-3 text-sm text-muted-foreground">
-          {message}
-        </p>
-      )}
+      {message && <output className="mt-3 block text-sm text-muted-foreground">{message}</output>}
       {preview && (
         <div className="mt-5 max-w-3xl">
           <p className="mb-2 text-xs text-muted-foreground">

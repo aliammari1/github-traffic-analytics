@@ -5,9 +5,9 @@ import { compare, Comparison, display, remember } from "./api";
 
 export default function Command({
   arguments: args,
-}: {
+}: Readonly<{
   arguments: { first: string; second: string };
-}) {
+}>) {
   const [data, setData] = useState<Comparison>();
   const [error, setError] = useState<string>();
   useEffect(() => {
@@ -28,9 +28,26 @@ export default function Command({
   }, [args.first, args.second]);
   if (error) return <Detail markdown={`# Comparison unavailable\n\n${error}`} />;
   if (!data) return <Detail isLoading markdown="Comparing repositories…" />;
+
+  const rows = data.repositories
+    .map(
+      (item) =>
+        `| ${item.repository.fullName} | ${display(item.repository.stars)} | ${display(item.growth.stars7d)} | ${display(item.growth.stars30d)} | ${display(item.growth.momentum?.score)} |`
+    )
+    .join("\n");
+  const markdown = [
+    "# Repository growth comparison",
+    "",
+    "| Repository | Stars | 7 days | 30 days | Momentum |",
+    "| --- | ---: | ---: | ---: | ---: |",
+    rows,
+    "",
+    "_Incomplete observation windows are unavailable._",
+  ].join("\n");
+
   return (
     <Detail
-      markdown={`# Repository growth comparison\n\n| Repository | Stars | 7 days | 30 days | Momentum |\n| --- | ---: | ---: | ---: | ---: |\n${data.repositories.map((item) => `| ${item.repository.fullName} | ${display(item.repository.stars)} | ${display(item.growth.stars7d)} | ${display(item.growth.stars30d)} | ${display(item.growth.momentum?.score)} |`).join("\n")}\n\n_Incomplete observation windows are unavailable._`}
+      markdown={markdown}
       actions={
         <ActionPanel>
           {data.repositories.map((item) => (
