@@ -72,7 +72,7 @@ More legitimate GitHub stars & organic adoption
 
 Deep utility features for ongoing research:
 
-- [ ] **External spike attribution**: Link observed referrer changes to verifiable external posts where public evidence is available.
+- [x] **External spike attribution**: Link observed referrer changes to verifiable external posts where public evidence is available.
 
 ---
 

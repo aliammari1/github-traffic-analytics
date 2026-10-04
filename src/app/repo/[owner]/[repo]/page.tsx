@@ -101,6 +101,7 @@ export default function RepositoryAnalyticsPage({
     () =>
       detectGrowthAnomalies(
         {
+          repository: `${owner}/${repo}`,
           stars: starHistory,
           views: hasPrivateAccess
             ? privateTraffic?.views.views.map((point) => ({
@@ -118,7 +119,7 @@ export default function RepositoryAnalyticsPage({
         },
         new Date(mountTime)
       ),
-    [starHistory, releases, hasPrivateAccess, privateTraffic, mountTime]
+    [starHistory, releases, hasPrivateAccess, privateTraffic, mountTime, owner, repo]
   );
 
   // 1. Fetch public analysis with cancellation flag to prevent race conditions

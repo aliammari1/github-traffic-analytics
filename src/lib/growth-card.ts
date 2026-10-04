@@ -44,6 +44,20 @@ export const GROWTH_CARD_THEMES = {
     accent: "#a3be8c",
     border: "#4c566a",
   },
+  "tokyo-night": {
+    background: "#1a1b26",
+    foreground: "#c0caf5",
+    muted: "#9aa5ce",
+    accent: "#73daca",
+    border: "#414868",
+  },
+  "solarized-dark": {
+    background: "#002b36",
+    foreground: "#93a1a1",
+    muted: "#839496",
+    accent: "#2aa198",
+    border: "#073642",
+  },
 } as const;
 
 export const GROWTH_CARD_STYLES = ["default", "sparkline"] as const;

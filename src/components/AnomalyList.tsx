@@ -4,6 +4,7 @@ import type { GrowthAnomaly } from "@/lib/anomalies";
 const labels: Record<GrowthAnomaly["type"], string> = {
   traffic_spike: "Views spike",
   traffic_drop: "Views drop",
+  weekend_surge: "Weekend views surge",
   clone_spike: "Clones spike",
   clone_drop: "Clones drop",
   star_acceleration: "Stars accelerating",
@@ -51,6 +52,18 @@ export default function AnomalyList({
               </div>
               <div>
                 <p className="text-sm text-foreground/90">{anomaly.explanation}</p>
+                {anomaly.attribution?.searchUrl && (
+                  <p className="mt-1 text-xs">
+                    <a
+                      href={anomaly.attribution.searchUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 font-medium text-foreground underline underline-offset-4 hover:text-foreground/80"
+                    >
+                      Verify on {anomaly.attribution.platform} ↗
+                    </a>
+                  </p>
+                )}
                 <p className="mt-2 text-xs tabular-nums text-muted-foreground">
                   {anomaly.observedValue.toLocaleString("en-US")} vs{" "}
                   {anomaly.baselineValue.toLocaleString("en-US")} baseline

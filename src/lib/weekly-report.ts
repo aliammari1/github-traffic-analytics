@@ -149,6 +149,7 @@ function buildPeriodicReport(
   const anomalies = [
     ...detectGrowthAnomalies(
       {
+        repository: input.fullName,
         views: [...viewsRows.values()].map((row) => ({ day: row.day, count: row.count })),
         clones: [...cloneRows.values()].map((row) => ({ day: row.day, count: row.count })),
         referrers: input.referrers,
