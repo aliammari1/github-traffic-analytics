@@ -50,7 +50,7 @@ describe("buildWeeklyReport", () => {
     expect(report.clones.count).toBeNull();
     expect(report.stars.count).toBeNull();
     expect(report.highlights).toContain(
-      "Views are unavailable for a complete seven-day comparison (6 of 7 days captured)."
+      "Views are unavailable for a complete 7-day comparison (6 of 7 days captured)."
     );
   });
 

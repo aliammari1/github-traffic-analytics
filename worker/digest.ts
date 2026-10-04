@@ -50,9 +50,14 @@ export async function verifyTrafficAccess(pref: {
       signal: AbortSignal.timeout(10_000),
     }
   );
-  // GitHub also uses 403 for rate limits. Keep the opt-in and retry those
-  // responses; a missing repository is the only conclusive revocation here.
   if (response.status === 404) return false;
+  if (response.status === 403) {
+    const remaining = response.headers?.get?.("x-ratelimit-remaining");
+    if (remaining === "0") {
+      throw new Error("GitHub rate limit reached");
+    }
+    return false;
+  }
   if (!response.ok) throw new Error(`GitHub traffic verification returned ${response.status}`);
   return true;
 }

@@ -155,6 +155,10 @@ The [public analytics API v1](docs/public-api.md) exposes compact repository gro
 
 The [analytics MCP server](integrations/mcp-server/README.md) offers focused growth and traffic tools to coding agents through a local stdio connection.
 
+The [Raycast extension](integrations/raycast/README.md) delivers keyboard-driven repository growth lookup, comparison, and README card copying on macOS and Windows.
+
+Maintainers can also download verified, shareable SVG milestone certificates directly from the repository report.
+
 ### 6. Contextual AI Actions (Explains Math, Never Hallucinates)
 
 No generic AI chatbots. Maintainers can trigger contextual briefings:

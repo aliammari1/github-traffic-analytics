@@ -1,0 +1,123 @@
+{
+  "name": "github-traffic-analytics-raycast",
+  "title": "GitHub Traffic Analytics",
+  "description": "Look up observed repository growth from Raycast",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "author": "aliammari1",
+  "platforms": [
+    "macOS",
+    "Windows"
+  ],
+  "categories": [
+    "Developer Tools"
+  ],
+  "icon": "icon.png",
+  "scripts": {
+    "dev": "ray develop",
+    "build": "ray build"
+  },
+  "dependencies": {
+    "@raycast/api": "^2.6.2",
+    "react": "^19.3.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "typescript": "^6.0.3"
+  },
+  "preferences": [
+    {
+      "name": "apiBase",
+      "title": "Analytics API",
+      "description": "Versioned public API base URL",
+      "type": "textfield",
+      "required": false,
+      "default": "https://github-traffic-analytics.ali-ammari.workers.dev/api/v1"
+    }
+  ],
+  "commands": [
+    {
+      "name": "analyze-repository",
+      "title": "Analyze Repository",
+      "description": "View observed stars, momentum, and latest release",
+      "mode": "view",
+      "arguments": [
+        {
+          "name": "repository",
+          "type": "text",
+          "placeholder": "owner/repo",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "star-velocity",
+      "title": "Recent Star Velocity",
+      "description": "See recent observed star growth and history",
+      "mode": "view",
+      "arguments": [
+        {
+          "name": "repository",
+          "type": "text",
+          "placeholder": "owner/repo",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "search-recent",
+      "title": "Recent Repositories",
+      "description": "Search repositories you analyzed recently",
+      "mode": "view"
+    },
+    {
+      "name": "compare-repositories",
+      "title": "Compare Repositories",
+      "description": "Compare observed growth for two repositories",
+      "mode": "view",
+      "arguments": [
+        {
+          "name": "first",
+          "type": "text",
+          "placeholder": "owner/repo",
+          "required": true
+        },
+        {
+          "name": "second",
+          "type": "text",
+          "placeholder": "other/repo",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "launch-report",
+      "title": "Launch Growth Report",
+      "description": "Open a repository report in the web app",
+      "mode": "no-view",
+      "arguments": [
+        {
+          "name": "repository",
+          "type": "text",
+          "placeholder": "owner/repo",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "copy-growth-card",
+      "title": "Copy README Growth Card",
+      "description": "Copy a README card URL for a repository",
+      "mode": "no-view",
+      "arguments": [
+        {
+          "name": "repository",
+          "type": "text",
+          "placeholder": "owner/repo",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

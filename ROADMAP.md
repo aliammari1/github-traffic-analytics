@@ -58,32 +58,21 @@ More legitimate GitHub stars & organic adoption
 
 ---
 
-## 2. Next — Distribution
-
-High-leverage features that turn existing users into discovery channels:
-
-- [ ] **Growth milestone alerts via webhooks**: Automated Discord / Slack webhook notifications when a repository crosses major star milestones (e.g., 1k, 5k, 10k stars) or detects growth acceleration.
-- [ ] **Sharable growth milestone certificates**: Single-click exportable social assets celebrating repository velocity milestones.
+- [x] **Growth milestone alerts via webhooks**: Automated Discord / Slack webhook notifications when a repository crosses major star milestones (e.g., 1k, 5k, 10k stars) or detects growth acceleration.
+- [x] **Sharable growth milestone certificates**: Single-click exportable SVG social assets celebrating verified repository velocity milestones.
+- [x] **Automated GitHub Discussion / Issue digest**: GitHub Action or scheduled worker posting weekly or monthly traffic summaries directly into repository discussions.
+- [x] **`gh traffic` CLI extension**: Query star velocity, release impact, and traffic snapshots directly from the command line (`gh traffic view owner/repo`).
+- [x] **Standalone GitHub Action**: Archive repository traffic into git branch artifacts (`traffic-history` branch) for maintainers who prefer not to host a database.
+- [x] **Raycast extension**: Instant keyboard-driven lookup of repository growth velocity, comparisons, and README growth card copying.
+- [x] **MCP (Model Context Protocol) server**: Expose repository growth telemetry to agentic AI coding tools (Antigravity, Cursor, Claude Code).
 
 ---
 
-## 3. Next — Retention
+## 2. Next — Retention
 
-Deep utility features that keep maintainers coming back:
+Deep utility features for ongoing research:
 
 - [ ] **External spike attribution**: Link observed referrer changes to verifiable external posts where public evidence is available.
-- [ ] **Automated GitHub Discussion / Issue digest**: GitHub Action or scheduled worker posting monthly traffic summaries directly into repository discussions.
-
----
-
-## 4. Ecosystem & Developer Tools
-
-Extending the intelligence engine into maintainer terminals and IDEs:
-
-- [ ] **`gh traffic` CLI extension**: Query star velocity, release impact, and traffic snapshots directly from the command line (`gh traffic view owner/repo`).
-- [ ] **Standalone GitHub Action**: Archive repository traffic into git branch artifacts (`gh-pages` or data branch) for maintainers who prefer not to host a database.
-- [ ] **Raycast extension**: Instant keyboard-driven lookup of repository growth velocity and milestones.
-- [ ] **MCP (Model Context Protocol) server**: Expose repository growth telemetry to agentic AI coding tools (Antigravity, Cursor, Claude Code).
 
 ---
 

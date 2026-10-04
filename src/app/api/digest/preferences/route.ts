@@ -75,7 +75,7 @@ export async function PUT(request: NextRequest) {
   } catch (cause) {
     const status =
       cause && typeof cause === "object" && "status" in cause ? Number(cause.status) : 0;
-    return cause instanceof TrafficAccessError || status === 404
+    return cause instanceof TrafficAccessError || status === 403 || status === 404
       ? reply({ error: "GitHub no longer grants you traffic access to this repository." }, 403)
       : reply({ error: "Could not verify GitHub traffic access. Try again shortly." }, 502);
   }
