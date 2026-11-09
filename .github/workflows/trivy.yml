@@ -23,7 +23,7 @@ jobs:
       - uses: step-security/harden-runner@cb605e52c26070c328afc4562f0b4ada7618a84e # v2.10.4
         with:
           egress-policy: audit
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       # SHA-pinned to the current trivy-action release line; this avoids the
       # removed setup-trivy tag referenced by the older v0.29.0 action.
       - name: Run Trivy vulnerability scanner
